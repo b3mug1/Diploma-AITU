@@ -1,0 +1,37 @@
+flowchart LR
+    Browser["Браузер"]
+    subgraph Frontend["Frontend: React SPA"]
+      UI["Страницы и компоненты"]
+      Auth["Auth / locale contexts"]
+      APIClient["REST API client"]
+      WSClient["WebSocket hook"]
+      RepairUI["Repair ticket screens"]
+      AllocationUI["Allocation review screens"]
+    end
+    subgraph Backend["Backend: FastAPI"]
+      Routers["API routers"]
+      AuthService["Authentication / authorization"]
+      LockerService["Locker / student services"]
+      AllocationService["Explainable allocation rules"]
+      RepairService["Repair workflow service"]
+      WSManager["WebSocket manager"]
+      ORM["SQLAlchemy models / repositories"]
+    end
+    DB[("PostgreSQL")]
+    Browser --> UI
+    UI --> Auth
+    UI --> APIClient
+    UI --> WSClient
+    UI --> RepairUI
+    UI --> AllocationUI
+    APIClient -->|"HTTPS / REST"| Routers
+    WSClient <-->|"WSS events"| WSManager
+    Routers --> AuthService
+    Routers --> LockerService
+    Routers --> AllocationService
+    Routers --> RepairService
+    LockerService --> ORM
+    AllocationService --> ORM
+    RepairService --> ORM
+    ORM <-->|"SQL"| DB
+    Services -.->|"domain events"| WSManager

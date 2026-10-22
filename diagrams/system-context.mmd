@@ -1,0 +1,12 @@
+flowchart LR
+    Admin["Администратор"]
+    Student["Студент"]
+    Technician["Техник"]
+    System["Locker Management System"]
+    DB[("PostgreSQL")]
+    Mail["Email-сервис (если уведомления по email будут выбраны)"]
+    Admin -->|"управление реестрами, распределение, контроль ремонтов"| System
+    Student -->|"просмотр назначения, заявка на ремонт, статус"| System
+    Technician -->|"назначенные заявки и результат ремонта"| System
+    System <-->|"чтение/запись"| DB
+    System -.->|"уведомление о закрытии заявки"| Mail
