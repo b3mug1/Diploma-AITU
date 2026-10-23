@@ -1,65 +1,71 @@
 # Locker Management System
 
-**Официальная тема:** «Разработка информационной системы управления распределением и эксплуатацией шкафчиков в образовательной организации».
+**Diploma project topic:** “Development of an Information System for Managing Locker Allocation and Operations in an Educational Institution.”
 
-Locker Management System — веб-система для учёта шкафчиков, студентов, назначений и ремонтов в университете. Пользователи: студент, администратор и техник. Проект предусматривает автоматизированное распределение шкафчиков по утверждённым правилам приоритета, подачу и обработку заявок на ремонт, контроль состояний и обновление интерфейса в реальном времени.
+The project concerns a web-based system for maintaining locker records, assignments, and fault reports. The project remains in analysis and design, with an initial partial FastAPI backend now available. The current process and user needs still require empirical validation.
 
-## Проблема и ожидаемый результат
+## Problem and objective
 
-По описанию команды, шкафчики сейчас распределяются вручную, а единого сервиса распределения и обслуживания нет. Это утверждение необходимо подтвердить интервью или наблюдением и зафиксировать текущий процесс. Проект должен предоставить единый источник актуальных данных, прозрачное распределение, а также контролируемую обработку заявок на ремонт.
+According to the team's initial description, lockers are allocated manually and there is no unified service for recording and maintaining them. These claims have not yet been independently verified and are treated as hypotheses.
 
-**Ожидаемый результат:** разрабатываемое веб-приложение с интерфейсами студента, администратора и техника; учётом назначений и ремонтов; backend API; реляционной базой данных; журналом операций и прозрачным автоматизированным распределением.
+The project objective is to design, implement, and evaluate a system that supports locker records, assignments, and repair requests based on requirements validated by users and the organisation. Automated allocation is a conditional feature: its rules must be approved by the process owner before implementation.
 
-## Команда
+## Target roles
 
-| Участник | Учебная группа | GitHub | Ответственность |
+- **Student** — views their own assignment and, if the process is confirmed, submits and tracks a repair request.
+- **Administrator** — maintains registries and manages assignments and requests within approved authority.
+- **Technician** — handles assigned requests and records repair outcomes.
+
+The roles and permissions are provisional and require approval.
+
+## Project scope
+
+The provisional scope includes digital student and locker registries, assignment records, role-based access, and repair-request handling. Electronic locks, RFID and other physical-access technologies, payments, a mobile application, and integration with university systems are excluded from the baseline scope.
+
+Social status, academic performance (GPA), and activity are not approved allocation criteria. Collecting or using them requires separate justification and approval.
+
+## Provisional technologies
+
+The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy for the server, PostgreSQL for data storage, and Docker Compose for local deployment. WebSocket is one option for updating the interface. All choices are provisional; alternatives and selection criteria are documented in the [technology comparison](docs/technology-comparison.md).
+
+## Documentation
+
+- [Project proposal](docs/project-proposal.md)
+- [User research](docs/user-research.md)
+- [Questionnaire text](docs/google-form-questionnaire.md)
+- [Preliminary survey results](docs/survey-results.md)
+- [Student Google Form](https://forms.gle/SWRtDB8ZSErLt4qG6) — verify the actual form settings and responses
+- [Literature review](docs/literature-review.md)
+- [Existing-system comparison](docs/system-comparison.md)
+- [Technology comparison](docs/technology-comparison.md)
+- [Requirements and acceptance criteria](docs/requirements.md)
+- [Architecture and diagrams](docs/architecture.md)
+- [Scenarios and prototype](docs/prototype.md)
+- [Verification and evaluation plan](docs/evaluation-plan.md)
+- [Project management and risks](docs/project-management.md)
+- [Draft supervisor feedback for confirmation](docs/supervisor-feedback.md)
+- [Pre-defence checklist](docs/pre-defense-checklist.md)
+- [System context diagram for draw.io](diagrams/system-context.drawio)
+- [Use-case diagram for draw.io](diagrams/use-case.drawio)
+- [Component diagram for draw.io](diagrams/component.drawio)
+- [Mermaid sources and SVG exports](diagrams/)
+
+## Team
+
+| Member | Study group | GitHub | Responsibility |
 |---|---|---|---|
-| Murat Bekzat Gizatuly | SE-2401 | [b3mug1](https://github.com/b3mug1) | Backend-разработка (предварительно, согласно заявке); подтвердить распределение задач |
-| Amanbek Nazarbek Toleubekuly | SE-2401 | [nazarrbek](https://github.com/nazarrbek) | Требует подтверждения командой |
-| Sandybaev Daniyal Gabitovich | SE-2401 | [hqvnd](https://github.com/hqvnd) | Требует подтверждения командой |
+| Murat Bekzat Gizatuly | SE-2401 | [b3mug1](https://github.com/b3mug1) | Backend Developer / Team Lead; initial FastAPI registry and assignment API |
+| Amanbek Nazarbek Toleubekuly | SE-2401 | [nazarrbek](https://github.com/nazarrbek) | Backend Developer / DevOps; remaining backend workflows and Docker setup |
+| Sandybaev Daniyal Gabitovich | SE-2401 | [hqvnd](https://github.com/hqvnd) | Frontend Developer / QA; frontend implementation and interface verification |
 
-**Научный руководитель:** Latuta Konstantin Nikolayevich.
+**Academic supervisor:** Latuta Konstantin Nikolayevich.
 
-## Границы и статус
+## Project management and running the project
 
-Проект находится на этапе анализа и проектирования. Основной scope — реестр шкафчиков и студентов, автоматизированное распределение с приоритетами, жизненный цикл назначений, заявки на ремонт, назначение техника, закрытие заявки администратором, история и разграничение трёх ролей.
+Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
-Электронные замки, физические считыватели, платежи и интеграция с университетской системой не входят в базовый scope, пока команда и руководитель не согласуют обратное. Правила приоритета, использование чувствительных социально уязвимых категорий, активности и GPA требуют согласования, проверки справедливости и минимизации данных; термин «искусственный интеллект» использовать только при наличии действительно обоснованной ML-модели.
+An initial FastAPI backend slice is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. Authentication, repair workflows, migrations, and Docker Compose remain to be completed. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
 
-## Предварительные технологии
+## Current status
 
-- Frontend: React 18, Vite, Nginx.
-- Backend: Python, FastAPI, SQLAlchemy 2, Alembic.
-- Хранилище: PostgreSQL.
-- Обновления: WebSocket.
-- Развёртывание: Docker Compose.
-
-Это предварительный выбор: альтернативы и обоснование приведены в [сравнении технологий](docs/technology-comparison.md).
-
-## Документы проекта
-
-- [Проектное предложение и границы](docs/project-proposal.md)
-- [Актуальность и сбор пользовательских данных](docs/user-research.md)
-- [Текст анкеты для Google Forms](docs/google-form-questionnaire.md)
-- [Обзор литературы](docs/literature-review.md)
-- [Сравнение существующих систем](docs/system-comparison.md)
-- [Сравнение технологий](docs/technology-comparison.md)
-- [Требования и критерии приёмки](docs/requirements.md)
-- [Архитектура и сценарии](docs/architecture.md)
-- [Прототип ключевых сценариев](docs/prototype.md)
-- [План верификации и оценки](docs/evaluation-plan.md)
-- [Управление проектом и риски](docs/project-management.md)
-- [Каталог диаграмм](diagrams/)
-
-## YouTrack и документация
-
-- YouTrack: **ссылка ожидается от команды**.
-- Документация проекта: этот репозиторий; дополнительные ссылки добавить после публикации.
-
-## Запуск и тестирование
-
-В текущем репозитории исходный код приложения и инструкции запуска ещё не добавлены. После включения runnable-кода здесь появятся команды установки, запуска и тестов. Не помещайте реальные пароли, API-ключи и персональные данные в репозиторий; используйте `.env.example` с placeholders.
-
-## Текущий статус
-
-Подготовлен начальный комплект анализа и проектирования. Интервью/наблюдения, окончательное распределение ролей, адрес YouTrack, рецензирование руководителем и финальный список научных источников требуют подтверждения и выполнения командой. См. [следующие задачи](docs/project-management.md).
+An initial set of analysis and design documents and a partial FastAPI backend have been prepared. The backend supports student and locker registry operations and basic assignments; it does not yet include authentication, repair requests, migrations, or deployment configuration. The preliminary summary of eight survey submissions requires verification of consent filtering and denominators. The following remain incomplete: confirmation of the current process, a visual prototype, approval of requirements and permissions, the remaining backend and Docker work, frontend implementation, and verified substantive feedback from the academic supervisor. Tasks are tracked on [YouTrack](https://nazarbek.youtrack.cloud/agiles/204-1/current). Individual task status is summarised in the [pre-defence checklist](docs/pre-defense-checklist.md).
