@@ -36,7 +36,10 @@ def current_user(
     db: Session = Depends(get_db),
 ) -> User:
     session = db.get(AuthSession, token_digest(credentials.credentials)) if credentials else None
-    if session and session.expires_at.replace(tzinfo=UTC) > datetime.now(UTC):
+    expires_at = session.expires_at if session else None
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if session and expires_at > datetime.now(UTC):
         user = db.get(User, session.user_id)
         if user and user.is_active:
             return user

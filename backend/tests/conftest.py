@@ -15,13 +15,29 @@ from app.security import hash_password
 
 @pytest.fixture
 def db_factory():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    import uuid
+
+    from sqlalchemy import text
+    from sqlalchemy.engine import make_url
+
+    postgres_url = os.getenv("TEST_DATABASE_URL")
+    control = None
+    schema = "test_" + uuid.uuid4().hex
+    if postgres_url:
+        control = create_engine(postgres_url)
+        with control.begin() as connection:
+            connection.execute(text(f'CREATE SCHEMA "{schema}"'))
+        url = make_url(postgres_url).update_query_dict({"options": f"-csearch_path={schema}"})
+        engine = create_engine(url)
+    else:
+        engine = create_engine(
+            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+        )
 
     @event.listens_for(engine, "connect")
     def foreign_keys(connection, _):
-        connection.execute("PRAGMA foreign_keys=ON")
+        if not postgres_url:
+            connection.execute("PRAGMA foreign_keys=ON")
 
     Base.metadata.create_all(engine)
     factory = sessionmaker(engine, expire_on_commit=False)
@@ -36,6 +52,10 @@ def db_factory():
         db.commit()
     yield factory
     engine.dispose()
+    if control:
+        with control.begin() as connection:
+            connection.execute(text(f'DROP SCHEMA "{schema}" CASCADE'))
+        control.dispose()
 
 
 @pytest.fixture
