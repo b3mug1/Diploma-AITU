@@ -1,41 +1,33 @@
 # AITU Locker frontend
 
-React 18 + Vite. Интерфейс использует существующий FastAPI API, без демонстрационных данных и авторизации.
+React 18 + Vite administrator registry, with authenticated API requests.
 
-## Локальный запуск
+## Development
 
-Сначала запустите backend по инструкции в `../backend/README.md` на порту 8000, затем:
+Start the backend and create the first administrator using
+[`../backend/README.md`](../backend/README.md), then run:
 
 ```sh
-cd frontend
 npm ci
 npm run dev
 ```
 
-Откройте http://localhost:5173. Vite проксирует `/api` на `http://127.0.0.1:8000`. Стандартный API prefix: `/api/v1`.
+Open http://localhost:5173 and sign in as an administrator. Vite proxies `/api`
+to `http://127.0.0.1:8000`. API prefix is `/api/v1`.
+`npm run build` verifies the production bundle.
 
-```sh
-npm run build
-npm run preview
-```
+The session token is kept in memory and is cleared by page reload, logout, or
+an expired-session response. Logout also revokes it on the server. There are no
+default credentials. Student/technician accounts use the protected API for their
+workflows; those role-specific pages and the repair management UI remain future
+frontend work.
 
-`preview` проверяет статическую сборку; для работы API используйте dev-сервер или Nginx.
+## Docker
 
-## Nginx / Docker
+Run `docker compose up --build -d` from the repository root after configuring
+`.env`. Nginx serves the bundle and proxies API requests to `backend:8000`.
+The root README includes bootstrap and shutdown commands.
 
-```sh
-docker build -t aitu-frontend ./frontend
-docker run --rm -p 8080:80 --network <backend-network> aitu-frontend
-```
-
-Backend должен быть доступен в той же Docker-сети под именем `backend` на порту 8000 и слушать `0.0.0.0`. При другом адресе измените `proxy_pass` в `nginx.conf` до сборки. Docker Compose и контейнер backend пока не входят в этот frontend. Nginx раздаёт сборку и проксирует API с того же origin.
-
-## Возможности
-
-- Реестр шкафчиков: создание, поиск, фильтр, изменение статуса.
-- Реестр студентов: создание, поиск, число активных назначений.
-- Назначения: выдача свободного шкафчика, завершение, история.
-- Сводные показатели, загрузка, пустые состояния, ошибки API, адаптивный интерфейс.
-- Все страницы API загружаются пакетами по 100 записей.
-
-Это базовый прототип: доступ не ограничен, потому что backend пока не реализует авторизацию. Ремонтные заявки и роли требуют дальнейшей реализации API.
+The UI supports locker/student registries, manual assignments and completion,
+search/status filters, pagination, loading and error states. Authorization is
+always enforced by the API.

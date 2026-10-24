@@ -1,17 +1,20 @@
 const base = '/api/v1';
+let token = null;
+export function setToken(value) { token = value; }
 
 export async function request(path, { method = 'GET', body } = {}) {
   const response = await fetch(`${base}${path}`, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: body ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) {
+    if (response.status === 401 && token) window.dispatchEvent(new Event('session-expired'));
     const error = await response.json().catch(() => ({}));
     throw new Error(typeof error.detail === 'string' ? error.detail : `Ошибка запроса (${response.status}). Проверьте введённые данные.`);
   }
-  return response.json();
+  return response.status === 204 ? null : response.json();
 }
 
 export async function listAll(path) {

@@ -2,7 +2,7 @@
 
 **Diploma project topic:** “Development of an Information System for Managing Locker Allocation and Operations in an Educational Institution.”
 
-The project concerns a web-based system for maintaining locker records, assignments, and fault reports. The project remains in analysis and design, with an initial partial FastAPI backend now available. The current process and user needs still require empirical validation.
+The project concerns a web-based system for maintaining locker records, assignments, and fault reports. The project remains in analysis and design, with a FastAPI backend for registry, authentication and repair workflows now available. The current process and user needs still require empirical validation.
 
 ## Problem and objective
 
@@ -64,12 +64,47 @@ The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy 
 
 ### Frontend
 
-The initial React 18 + Vite frontend is in [`frontend/`](frontend/README.md). It includes locker and student registries, assignment creation and completion, search, status filters, and API error handling. Run `npm ci` and `npm run dev` from `frontend/` with the backend on port 8000. The frontend directory also includes a production Dockerfile and Nginx configuration; see its README for backend network requirements. Authentication and repair requests still require backend support.
+The initial React 18 + Vite frontend is in [`frontend/`](frontend/README.md). It includes locker and student registries, assignment creation and completion, search, status filters, and API error handling. Run `npm ci` and `npm run dev` from `frontend/` with the backend on port 8000. The frontend directory also includes a production Dockerfile and Nginx configuration; see its README for backend network requirements. Administrator login/logout is connected to the API. Student/technician and repair-specific UI pages remain frontend work.
 
 Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
-An initial FastAPI backend slice is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. Authentication, repair workflows, migrations, and Docker Compose remain to be completed. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
+The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It now includes revocable bearer sessions, server-side roles, scoped repair workflows, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
 
 ## Current status
 
-An initial set of analysis and design documents and a partial FastAPI backend have been prepared. The backend supports student and locker registry operations and basic assignments; it does not yet include authentication, repair requests, migrations, or deployment configuration. The preliminary summary of eight survey submissions requires verification of consent filtering and denominators. The following remain incomplete: confirmation of the current process, a visual prototype, approval of requirements and permissions, the remaining backend and Docker work, frontend implementation, and verified substantive feedback from the academic supervisor. Tasks are tracked on [YouTrack](https://nazarbek.youtrack.cloud/agiles/204-1/current). Individual task status is summarised in the [pre-defence checklist](docs/pre-defense-checklist.md).
+An initial set of analysis and design documents and a partial FastAPI backend have been prepared. The backend supports student and locker registries, manual assignments, authentication, server-side roles and repair requests. Versioned migrations and a local Compose stack are included. The preliminary summary of eight survey submissions requires verification of consent filtering and denominators. The following remain incomplete: confirmation of the current process, a visual prototype, approval of requirements and permissions, production deployment review, remaining role-specific frontend pages, and verified substantive feedback from the academic supervisor. Tasks are tracked on [YouTrack](https://nazarbek.youtrack.cloud/agiles/204-1/current). Individual task status is summarised in the [pre-defence checklist](docs/pre-defense-checklist.md).
+
+
+## Run the complete local stack
+
+Requires Docker Desktop (or Docker Engine) and Docker Compose v2.
+From the repository root:
+
+```sh
+cp .env.example .env
+# Set POSTGRES_PASSWORD to a random URL-safe value in .env.
+docker compose up --build -d
+docker compose exec backend python -m app.bootstrap
+```
+
+Open http://localhost:8080 and sign in with the administrator you just created.
+`WEB_PORT` in `.env` changes the port. No default passwords are shipped.
+Compose starts PostgreSQL, waits for database health, runs Alembic in a one-shot
+`migrate` service, then starts the API and Nginx frontend after readiness checks.
+The API and database are not published to host ports. The UI listens on loopback.
+The API prefix in this stack is fixed at `/api/v1` to match Nginx and the frontend.
+
+```sh
+docker compose ps -a
+docker compose logs migrate backend
+docker compose exec backend alembic current
+docker compose down
+```
+
+Database records persist in the `postgres_data` named volume across shutdowns.
+Do not remove this volume unless intentionally discarding the database.
+On upgrades, rerun `docker compose up --build -d` and inspect migration logs.
+Environment configuration and credentials belong in ignored `.env` files.
+See [backend instructions](backend/README.md) for permissions, API examples,
+legacy database migration and verification. Repair rules and role permissions
+are provisional and still require organisational approval.

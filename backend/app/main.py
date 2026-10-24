@@ -1,32 +1,17 @@
 """FastAPI application entry point."""
 
-from contextlib import asynccontextmanager
-from typing import AsyncIterator
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import router as auth_router
 from app.config import API_PREFIX, FRONTEND_ORIGINS
-from app.database import Base, engine
-from app import models  # noqa: F401 — register model metadata before create_all.
+from app.repairs import router as repair_router
 from app.routes import router
-
-
-@asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    """Create tables for the initial local prototype."""
-    Base.metadata.create_all(bind=engine)
-    yield
-
 
 app = FastAPI(
     title="Locker Management System API",
-    description=(
-        "Initial API slice for student and locker registries and locker assignments. "
-        "Authentication and repair-request workflows are not included in this contribution."
-    ),
-    version="0.1.0",
-    lifespan=lifespan,
+    description="Locker registries, role-based access and repair operations.",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -38,3 +23,8 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix=API_PREFIX)
+
+app.include_router(auth_router, prefix=API_PREFIX)
+
+
+app.include_router(repair_router, prefix=API_PREFIX)
