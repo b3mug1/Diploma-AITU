@@ -62,6 +62,10 @@ The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy 
 
 ## Project management and running the project
 
+### Frontend
+
+The initial React 18 + Vite frontend is in [`frontend/`](frontend/README.md). It includes locker and student registries, assignment creation and completion, search, status filters, and API error handling. Run `npm ci` and `npm run dev` from `frontend/` with the backend on port 8000. The frontend directory also includes a production Dockerfile and Nginx configuration; see its README for backend network requirements. Authentication and repair requests still require backend support.
+
 Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
 An initial FastAPI backend slice is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. Authentication, repair workflows, migrations, and Docker Compose remain to be completed. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
