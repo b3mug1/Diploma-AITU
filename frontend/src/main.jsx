@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { listAll, request } from './api';
 import './styles.css';
+import { AuthGate } from './AuthGate';
 
 const statuses = { available: 'Свободен', occupied: 'Занят', maintenance: 'На ремонте', out_of_service: 'Недоступен' };
 const tabs = { lockers: 'Шкафчики', students: 'Студенты', assignments: 'Назначения' };
@@ -61,7 +62,7 @@ function App() {
   return <div className="app">
     <aside><a className="brand" href="/">a<span>i</span>tu<span className="brand-dot">®</span></a><div className="workspace">CAMPUS SERVICES</div>
       <nav aria-label="Разделы">{Object.entries(tabs).map(([key, title], index) => <button key={key} className={tab === key ? 'selected' : ''} onClick={() => { setTab(key); setSearch(''); }}>{['▦', '◉', '⇄'][index]}<span>{title}</span><span className="nav-arrow">↗</span></button>)}</nav>
-      <div className="aside-bottom"><span className="small-label">ASTANA IT UNIVERSITY</span><p>Порядок начинается<br/>с простых вещей.</p><div className="avatar">A</div><div>Рабочее пространство<small>Базовый прототип · без авторизации</small></div></div>
+      <div className="aside-bottom"><span className="small-label">ASTANA IT UNIVERSITY</span><p>Порядок начинается<br/>с простых вещей.</p><div className="avatar">A</div><div>Рабочее пространство<small>Доступ администратора</small></div></div>
     </aside>
     <main><header><span>Управление кампусом <span className="slash">/</span> Шкафчики</span><span className="version">LMS / 01</span></header>
       <section className="heading"><div><div className="eyebrow">LOCKER MANAGEMENT SYSTEM</div><h1>Всё на своём месте<span>.</span></h1><p>Шкафчики, студенты и назначения — в одном пространстве.</p></div><button className="secondary" disabled={loading || busy} onClick={load}>↻ Обновить</button></section>
@@ -78,4 +79,4 @@ function App() {
   </div>;
 }
 
-createRoot(document.getElementById('root')).render(<React.StrictMode><App/></React.StrictMode>);
+createRoot(document.getElementById('root')).render(<React.StrictMode><AuthGate><App/></AuthGate></React.StrictMode>);
