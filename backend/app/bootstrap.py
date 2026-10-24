@@ -12,12 +12,8 @@ from app.security import hash_password
 
 def main():
     with SessionLocal() as db:
-        if db.scalar(
-            select(User.id).where(User.role == Role.ADMIN, User.is_active.is_(True))
-        ):
-            raise SystemExit(
-                "An administrator already exists; use the authenticated /users API."
-            )
+        if db.scalar(select(User.id).where(User.role == Role.ADMIN, User.is_active.is_(True))):
+            raise SystemExit("An administrator already exists; use the authenticated /users API.")
         username = input("Administrator username: ").strip()
         password = getpass.getpass("Password (12–128 characters): ")
         if password != getpass.getpass("Repeat password: "):

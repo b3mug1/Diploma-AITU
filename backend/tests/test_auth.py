@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
+
 from app.models import AuthSession
 
 API = "/api/v1"
@@ -45,9 +47,7 @@ def test_accounts_permissions_and_deactivation(client, admin):
     assert "password_hash" not in created.json()
     assert client.post(API + "/users", headers=admin, json=payload).status_code == 409
     assert (
-        client.post(
-            API + "/users", headers=admin, json={**payload, "student_id": None}
-        ).status_code
+        client.post(API + "/users", headers=admin, json={**payload, "student_id": None}).status_code
         == 422
     )
     login = client.post(
@@ -59,9 +59,7 @@ def test_accounts_permissions_and_deactivation(client, admin):
     assert client.post(API + "/users", headers=headers, json=payload).status_code == 403
     assert client.get(API + "/assignments", headers=headers).json() == []
     assert (
-        client.post(
-            API + f"/users/{created.json()['id']}/deactivate", headers=admin
-        ).status_code
+        client.post(API + f"/users/{created.json()['id']}/deactivate", headers=admin).status_code
         == 200
     )
     assert client.get(API + "/auth/me", headers=headers).status_code == 401
@@ -80,25 +78,14 @@ def test_assignment_and_status_guards(client, admin):
         headers=admin,
         json={"student_code": "S1", "full_name": "Synthetic"},
     ).json()
-    locker = client.post(
-        API + "/lockers", headers=admin, json={"locker_number": "A1"}
-    ).json()
+    locker = client.post(API + "/lockers", headers=admin, json={"locker_number": "A1"}).json()
     path = API + f"/lockers/{locker['id']}/status"
-    assert (
-        client.patch(path, headers=admin, json={"status": "occupied"}).status_code
-        == 409
-    )
+    assert client.patch(path, headers=admin, json={"status": "occupied"}).status_code == 409
     payload = {"student_id": s["id"], "locker_id": locker["id"]}
     assignment = client.post(API + "/assignments", headers=admin, json=payload)
     assert assignment.status_code == 201
-    assert (
-        client.post(API + "/assignments", headers=admin, json=payload).status_code
-        == 409
-    )
-    assert (
-        client.patch(path, headers=admin, json={"status": "available"}).status_code
-        == 409
-    )
+    assert client.post(API + "/assignments", headers=admin, json=payload).status_code == 409
+    assert client.patch(path, headers=admin, json={"status": "available"}).status_code == 409
     end = API + f"/assignments/{assignment.json()['id']}/end"
     assert client.post(end, headers=admin).status_code == 200
     assert client.post(end, headers=admin).status_code == 409

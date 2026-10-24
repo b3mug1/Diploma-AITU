@@ -17,17 +17,13 @@ bearer = HTTPBearer(auto_error=False)
 
 def hash_password(password: str) -> str:
     salt = secrets.token_hex(16)
-    digest = hashlib.scrypt(
-        password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1
-    )
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1)
     return salt + ":" + digest.hex()
 
 
 def verify_password(password: str, stored: str) -> bool:
     salt, expected = stored.split(":")
-    digest = hashlib.scrypt(
-        password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1
-    )
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1)
     return hmac.compare_digest(digest.hex(), expected)
 
 
@@ -39,11 +35,7 @@ def current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
-    session = (
-        db.get(AuthSession, token_digest(credentials.credentials))
-        if credentials
-        else None
-    )
+    session = db.get(AuthSession, token_digest(credentials.credentials)) if credentials else None
     if session and session.expires_at.replace(tzinfo=UTC) > datetime.now(UTC):
         user = db.get(User, session.user_id)
         if user and user.is_active:

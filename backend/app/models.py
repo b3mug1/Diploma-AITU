@@ -33,9 +33,7 @@ class Student(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     student_code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(200))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     assignments: Mapped[list["Assignment"]] = relationship(back_populates="student")
 
@@ -55,9 +53,7 @@ class Locker(Base):
         default=LockerStatus.AVAILABLE,
         server_default=LockerStatus.AVAILABLE.value,
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     assignments: Mapped[list["Assignment"]] = relationship(back_populates="locker")
 
@@ -81,12 +77,8 @@ class Assignment(Base):
     locker_id: Mapped[int] = mapped_column(
         ForeignKey("lockers.id", ondelete="RESTRICT"), index=True
     )
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    ended_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     student: Mapped[Student] = relationship(back_populates="assignments")
     locker: Mapped[Locker] = relationship(back_populates="assignments")
@@ -129,20 +121,14 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(64), unique=True)
     password_hash: Mapped[str] = mapped_column(String(256))
     role: Mapped[Role] = mapped_column(enum_column(Role, "user_role"))
-    student_id: Mapped[int | None] = mapped_column(
-        ForeignKey("students.id"), unique=True
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean, default=True, server_default=true()
-    )
+    student_id: Mapped[int | None] = mapped_column(ForeignKey("students.id"), unique=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=true())
 
 
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
     token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
@@ -160,17 +146,13 @@ class RepairRequest(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     locker_id: Mapped[int] = mapped_column(ForeignKey("lockers.id"), index=True)
     reporter_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
-    technician_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), index=True
-    )
+    technician_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), index=True)
     description: Mapped[str] = mapped_column(String(2000))
     status: Mapped[RepairStatus] = mapped_column(
         enum_column(RepairStatus, "repair_status"), default=RepairStatus.OPEN
     )
     resolution: Mapped[str | None] = mapped_column(String(2000))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
