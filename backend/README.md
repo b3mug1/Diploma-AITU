@@ -44,6 +44,7 @@ All routes use `/api/v1` by default (`API_PREFIX` locally).
 | POST | `/users/{id}/deactivate` | Administrator; revokes all sessions; cannot deactivate self |
 | POST, GET | `/students` | Administrator registry |
 | POST, GET | `/lockers` | Administrator registry; optional `?status=available` |
+| GET | `/lockers/{id}` | Administrator; student for an assigned or personally reported locker; technician for a locker linked to an assigned request |
 | PATCH | `/lockers/{id}/status` | Administrator; assignment and repair guards |
 | POST | `/assignments` | Administrator; only available lockers with no active repair |
 | GET | `/assignments` | Administrator: all; student: own; technician: denied |

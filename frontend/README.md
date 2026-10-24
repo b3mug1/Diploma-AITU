@@ -1,33 +1,38 @@
-# AITU Locker frontend
+# AITU Locker Management frontend
 
-React 18 + Vite administrator registry, with authenticated API requests.
+React 18 + Vite interface for the three project roles. The backend API remains
+the authority for authentication and permissions.
 
-## Development
+## Role features
 
-Start the backend and create the first administrator using
-[`../backend/README.md`](../backend/README.md), then run:
+- **Administrator:** manage student and locker registries, create assignments,
+  view and close repair requests, assign technicians, and create or deactivate
+  user accounts.
+- **Student:** view current and previous locker assignments, submit a repair
+  request for an assigned locker, and track personal requests and outcomes.
+- **Technician:** view assigned repair requests, mark a repair as in progress,
+  and record the resolution when work is complete.
+
+## Local development
+
+Start the API and create the initial administrator as described in
+[`../backend/README.md`](../backend/README.md). Then run:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in as an administrator. Vite proxies `/api`
-to `http://127.0.0.1:8000`. API prefix is `/api/v1`.
-`npm run build` verifies the production bundle.
-
-The session token is kept in memory and is cleared by page reload, logout, or
-an expired-session response. Logout also revokes it on the server. There are no
-default credentials. Student/technician accounts use the protected API for their
-workflows; those role-specific pages and the repair management UI remain future
-frontend work.
+Open http://localhost:5173. Vite proxies `/api` to
+`http://127.0.0.1:8000`; the API uses the `/api/v1` prefix. Run `npm run build`
+to create a production bundle.
 
 ## Docker
 
-Run `docker compose up --build -d` from the repository root after configuring
-`.env`. Nginx serves the bundle and proxies API requests to `backend:8000`.
-The root README includes bootstrap and shutdown commands.
+From the repository root, configure `.env` and run `docker compose up --build -d`.
+Nginx serves the built frontend and proxies API calls to the backend container.
+The root README documents bootstrap, health checks, and shutdown commands.
 
-The UI supports locker/student registries, manual assignments and completion,
-search/status filters, pagination, loading and error states. Authorization is
-always enforced by the API.
+Session tokens remain in memory and are cleared on logout, session expiry, or
+page reload. Use synthetic records during development; do not enter real student
+information in this prototype.

@@ -108,6 +108,49 @@ def list_lockers(
     return list(db.scalars(statement.offset(offset).limit(limit)))
 
 
+@router.get("/lockers/{locker_id}", response_model=LockerRead, tags=["lockers"])
+def read_locker(
+    locker_id: int,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+) -> Locker:
+    """Return a locker only to administrators or users linked to its workflow."""
+    locker = db.get(Locker, locker_id)
+    if locker is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Locker not found.")
+
+    if user.role == Role.ADMIN:
+        return locker
+
+    if user.role == Role.STUDENT:
+        student_assignment = db.scalar(
+            select(Assignment.id).where(
+                Assignment.student_id == user.student_id,
+                Assignment.locker_id == locker_id,
+            )
+        )
+        own_repair = db.scalar(
+            select(RepairRequest.id).where(
+                RepairRequest.reporter_id == user.id,
+                RepairRequest.locker_id == locker_id,
+            )
+        )
+        if student_assignment is not None or own_repair is not None:
+            return locker
+
+    if user.role == Role.TECHNICIAN:
+        assigned_repair = db.scalar(
+            select(RepairRequest.id).where(
+                RepairRequest.technician_id == user.id,
+                RepairRequest.locker_id == locker_id,
+            )
+        )
+        if assigned_repair is not None:
+            return locker
+
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Locker not found.")
+
+
 @router.patch(
     "/lockers/{locker_id}/status",
     response_model=LockerRead,

@@ -3,3 +3,65 @@
 
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; margin: 0; }
 .session-bar { display: flex; justify-content: flex-end; align-items: center; gap: 16px; padding: 12px 24px; background: white; border-bottom: 1px solid #ddd; }
+
+.login-card { width: min(440px, 100%); }
+.login-brand { display: inline-block; color: #173e32; margin-bottom: 34px; }
+.login-brand span { font-size: 14px; vertical-align: top; letter-spacing: 0; }
+.login-card .eyebrow { margin-bottom: 12px; }
+.login-card > p { color: #748074; font-size: 13px; line-height: 1.6; }
+.login-card form label { display: grid; gap: 8px; font-size: 12px; margin: 18px 0; }
+.account-panel { display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 6px 10px; }
+.account-panel .small-label { grid-column: 1 / -1; margin-bottom: 18px; }
+.account-avatar { grid-row: 2; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: #355448; color: #fff; font-weight: 800; }
+.account-name { min-width: 0; overflow-wrap: anywhere; }
+.account-name small { display: block; color: #aabbb0; margin-top: 5px; }
+.logout-button { grid-column: 1 / -1; margin-top: 16px; border: 1px solid #476256; background: transparent; color: #e6eee7; text-align: left; }
+.head-actions { display: flex; align-items: center; gap: 10px; }
+.head-actions button { white-space: nowrap; }
+.section-gap { margin-top: 24px; }
+.content-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 8px 0 22px; color: #7b857a; font-size: 12px; }
+.workflow-form { display: grid; gap: 18px; padding: 0 26px 26px; max-width: 720px; }
+.workflow-form label, .modal form label { display: grid; gap: 8px; font-size: 12px; }
+.workflow-form textarea, .modal textarea { resize: vertical; min-height: 100px; border: 1px solid #dce2d6; border-radius: 6px; padding: 12px; color: #344b3c; font: inherit; }
+.workflow-form .submit { justify-self: start; width: auto; min-width: 180px; }
+.empty-inline { padding: 4px 26px 28px; color: #7b857a; font-size: 12px; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 18px; }
+.workflow-card { background: #fff; border: 1px solid #e0e4d9; border-radius: 12px; padding: 24px; min-width: 0; }
+.workflow-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.workflow-card h2 { margin-top: 9px; overflow-wrap: anywhere; }
+.workflow-card .eyebrow { font-size: 9px; letter-spacing: 1.4px; }
+.workflow-description { color: #526348; line-height: 1.7; font-size: 14px; overflow-wrap: anywhere; }
+.detail-list { display: grid; gap: 12px; margin: 20px 0; }
+.detail-list div { display: grid; grid-template-columns: minmax(95px, .7fr) 1.3fr; gap: 12px; font-size: 11px; }
+.detail-list dt { color: #899286; }
+.detail-list dd { margin: 0; color: #344b3c; overflow-wrap: anywhere; }
+.resolution-note { padding: 12px; margin: 16px 0; border-radius: 7px; background: #f4f7ee; color: #536a40; font-size: 12px; line-height: 1.6; }
+.workflow-card > button { margin-top: 4px; }
+.status-open { background: #fff3de; color: #aa7d32; }
+.status-assigned { background: #ebf0f9; color: #607fad; }
+.status-in_progress { background: #e8f1ee; color: #37745e; }
+.status-resolved { background: #edf4df; color: #668835; }
+.status-cancelled { background: #f9eae5; color: #ad6b55; }
+.status-occupied { background: #ebf0f9; color: #607fad; }
+.status-available { background: #edf4df; color: #668835; }
+.status-out_of_service { background: #f9eae5; color: #ad6b55; }
+.table-subtext { display: block; margin-top: 5px; color: #899286; font-size: 10px; }
+.description-cell { white-space: normal; min-width: 200px; max-width: 360px; line-height: 1.5; }
+.action-cell { min-width: 145px; }
+.danger-text { color: #a35443; }
+.form-hint { color: #7b857a; font-size: 11px; line-height: 1.5; }
+.close-button { padding: 5px 12px; font-size: 18px; }
+.registry .empty { border-top: 1px solid #edf0e7; }
+.header-tools { display: flex; align-items: center; gap: 14px; }
+.header-logout { display: none; padding: 8px 12px; font-size: 10px; }
+
+@media(max-width:700px) {
+  .account-panel { display: none; }
+  .header-logout { display: inline-block; }
+  .head-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .head-actions button { font-size: 10px; padding: 10px; }
+  .content-toolbar { align-items: flex-start; font-size: 10px; }
+  .workflow-form { padding: 0 18px 20px; }
+  .workflow-card { padding: 18px; }
+  .detail-list div { grid-template-columns: 1fr; gap: 4px; }
+}

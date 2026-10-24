@@ -3,10 +3,11 @@ let token = null;
 export function setToken(value) { token = value; }
 
 export async function request(path, { method = 'GET', body } = {}) {
+  const hasBody = body !== undefined;
   const response = await fetch(`${base}${path}`, {
     method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
+    headers: { ...(hasBody ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: hasBody ? JSON.stringify(body) : undefined,
     signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) {
