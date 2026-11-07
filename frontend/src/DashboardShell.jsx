@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 const roleNames = {
   admin: 'Администратор',
@@ -17,6 +18,7 @@ export function DashboardShell({
   onTabChange,
   children,
 }) {
+  const [passwordOpen, setPasswordOpen] = useState(false);
   return (
     <div className="app">
       <aside>
@@ -48,7 +50,7 @@ export function DashboardShell({
       <main>
         <header>
           <span>Управление кампусом <span className="slash">/</span> {title}</span>
-          <div className="header-tools"><span className="version">LMS / 01</span><button className="header-logout" onClick={onLogout} disabled={loggingOut}>{loggingOut ? '…' : 'Выйти'}</button></div>
+          <div className="header-tools"><span className="version">LMS / 01</span><button className="secondary account-password-button" onClick={() => setPasswordOpen(true)}>Сменить пароль</button><button className="header-logout" onClick={onLogout} disabled={loggingOut}>{loggingOut ? '…' : 'Выйти'}</button></div>
         </header>
         <section className="heading">
           <div>
@@ -60,6 +62,7 @@ export function DashboardShell({
         {children}
         <div className="page-note"><span>AITU · Campus locker management</span><span>ASTANA · KAZAKHSTAN</span></div>
       </main>
+      {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
     </div>
   );
 }
