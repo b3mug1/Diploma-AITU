@@ -5,8 +5,10 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.activity import record_event
 from app.config import SESSION_HOURS
 from app.database import get_db
 from app.models import AuthSession, Student, User
@@ -63,9 +65,8 @@ def me(user: User = Depends(current_user)):
     "/users",
     response_model=UserRead,
     status_code=201,
-    dependencies=[Depends(admin_user)],
 )
-def create_user(payload: UserCreate, db: Session = Depends(get_db)):
+def create_user(payload: UserCreate, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
     if payload.student_id is not None and not db.get(Student, payload.student_id):
         raise HTTPException(404, "Student not found.")
     user = User(
@@ -75,6 +76,12 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         student_id=payload.student_id,
     )
     db.add(user)
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(409, "Username or student account already exists.") from exc
+    record_event(db, admin, "user.created", "user", user.id)
     _commit_or_conflict(db, "Username or student account already exists.")
     db.refresh(user)
     return user
@@ -96,7 +103,9 @@ def deactivate(user_id: int, admin: User = Depends(admin_user), db: Session = De
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(404, "User not found.")
-    user.is_active = False
-    db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
-    db.commit()
+    if user.is_active:
+        user.is_active = False
+        db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
+        record_event(db, admin, "user.deactivated", "user", user_id)
+        db.commit()
     return user

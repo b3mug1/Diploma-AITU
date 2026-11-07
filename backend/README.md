@@ -53,12 +53,31 @@ All routes use `/api/v1` by default (`API_PREFIX` locally).
 | GET | `/repairs`, `/repairs/{id}` | Administrator: all; student: own reports; technician: assigned reports |
 | POST | `/repairs/{id}/assign` | Administrator assigns/reassigns an open or assigned ticket to active technician |
 | PATCH | `/repairs/{id}/status` | Assigned technician or administrator, subject to transitions below |
+| GET | `/notifications` | Current user's notifications; supports `?unread_only=true` and pagination |
+| POST | `/notifications/{id}/read` | Mark an owned notification as read |
+| GET | `/admin/audit-events` | Administrator-only action history; optional `action` and `actor_id` filters |
+| GET | `/admin/reports/summary` | Administrator-only locker, assignment, student and occupancy totals |
+| GET | `/admin/reports/locations` | Administrator-only locker counts by location and status |
 
 List endpoints accept `offset` (>=0), `limit` (1–100, default 50).
 `/assignments` defaults to `active_only=true`; `/repairs` accepts a `status` filter.
 Student users require a unique `student_id` referencing the student registry;
 admin and technician accounts must not have a student link. No GPA, social status,
 or automatic allocation rules are implemented.
+
+Notifications are stored in the database and retrieved through the API; email,
+push delivery and frontend integration are not included. Students with an active
+account are notified when their locker assignment starts or ends. Technicians and
+repair reporters are notified as a request progresses; administrators are notified
+about new repair requests and lockers moved to maintenance or out of service.
+Users without an account cannot receive notifications. Audit events record
+successful registry, assignment, repair and account changes in the same transaction
+as the change. They include the actor, action, entity and time; login and notification
+reads are outside this business-event history.
+
+Reports are live aggregates with no student names. Occupancy rate is occupied
+lockers divided by all lockers, multiplied by 100; an empty registry returns 0.
+Lockers without a location are grouped as `Unspecified`.
 
 Example user JSON (administrator bearer header required):
 
@@ -98,7 +117,8 @@ concurrent transactions.
 ## Migrations and existing prototype databases
 
 Startup does not create or change tables. `alembic upgrade head` is mandatory.
-`0001` represents the original registry schema; `0002` adds users, sessions, repairs.
+`0001` represents the original registry schema; `0002` adds users, sessions, repairs;
+`0003` adds notifications and audit events.
 
 For an existing database created by the original prototype, back it up, stop the
 old API, and verify it contains exactly the original three tables and indexes
@@ -112,7 +132,7 @@ python -m app.bootstrap
 
 Do not stamp an empty or modified schema. For a new database use only
 `alembic upgrade head`. PostgreSQL URLs must use `postgresql+psycopg://`.
-`alembic downgrade 0001` removes accounts/sessions/repairs and their data;
+`alembic downgrade 0001` removes accounts, sessions, repairs, notifications and audit events;
 rollback is for disposable environments or planned restoration from backup.
 
 ## Verification
@@ -141,6 +161,6 @@ Compose binds the UI to loopback, keeps PostgreSQL/API on the internal network,
 and rate-limits login attempts at Nginx. For a shared deployment configure TLS,
 trusted proxy settings, backups and restore procedures, monitoring and a reviewed
 permissions policy. The baseline has no password recovery, MFA, institutional SSO,
-notifications, immutable audit trail, or automated allocation. Student and
+tamper-resistant audit storage, or automated allocation. Student and
 technician workflows currently use the API; the web UI is the administrator
 registry with login/logout. Business validation and approval remain external work.

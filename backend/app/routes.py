@@ -7,6 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.activity import notify_admins, notify_student, record_event
 from app.database import get_db
 from app.models import (
     Assignment,
@@ -40,6 +41,14 @@ def _commit_or_conflict(db: Session, detail: str) -> None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
 
 
+def _flush_or_conflict(db: Session, detail: str) -> None:
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail) from exc
+
+
 @router.get("/health", tags=["health"])
 def health() -> dict[str, str]:
     """Report that the API process is responding."""
@@ -51,11 +60,13 @@ def health() -> dict[str, str]:
     response_model=StudentRead,
     status_code=status.HTTP_201_CREATED,
     tags=["students"],
-    dependencies=[Depends(admin_user)],
 )
-def create_student(payload: StudentCreate, db: Session = Depends(get_db)) -> Student:
+def create_student(payload: StudentCreate, admin: User = Depends(admin_user),
+                   db: Session = Depends(get_db)) -> Student:
     student = Student(**payload.model_dump())
     db.add(student)
+    _flush_or_conflict(db, "A student with this code already exists.")
+    record_event(db, admin, "student.created", "student", student.id)
     _commit_or_conflict(db, "A student with this code already exists.")
     db.refresh(student)
     return student
@@ -80,11 +91,13 @@ def list_students(
     response_model=LockerRead,
     status_code=status.HTTP_201_CREATED,
     tags=["lockers"],
-    dependencies=[Depends(admin_user)],
 )
-def create_locker(payload: LockerCreate, db: Session = Depends(get_db)) -> Locker:
+def create_locker(payload: LockerCreate, admin: User = Depends(admin_user),
+                  db: Session = Depends(get_db)) -> Locker:
     locker = Locker(**payload.model_dump())
     db.add(locker)
+    _flush_or_conflict(db, "A locker with this number already exists.")
+    record_event(db, admin, "locker.created", "locker", locker.id)
     _commit_or_conflict(db, "A locker with this number already exists.")
     db.refresh(locker)
     return locker
@@ -155,11 +168,11 @@ def read_locker(
     "/lockers/{locker_id}/status",
     response_model=LockerRead,
     tags=["lockers"],
-    dependencies=[Depends(admin_user)],
 )
 def update_locker_status(
     locker_id: int,
     payload: LockerStatusUpdate,
+    admin: User = Depends(admin_user),
     db: Session = Depends(get_db),
 ) -> Locker:
     locker = db.scalar(
@@ -184,7 +197,12 @@ def update_locker_status(
         raise HTTPException(409, "Create an assignment to occupy a locker.")
     if payload.status == LockerStatus.AVAILABLE and _has_open_repair(db, locker.id):
         raise HTTPException(409, "Close the active repair before making the locker available.")
-    locker.status = payload.status
+    if locker.status != payload.status:
+        locker.status = payload.status
+        record_event(db, admin, "locker.status_changed", "locker", locker.id)
+        if payload.status in (LockerStatus.MAINTENANCE, LockerStatus.OUT_OF_SERVICE):
+            notify_admins(db, "Locker status changed",
+                          f"Locker {locker.locker_number} is now {payload.status.value}.", admin.id)
     _commit_or_conflict(db, "The locker status could not be updated due to a data conflict.")
     db.refresh(locker)
     return locker
@@ -195,9 +213,9 @@ def update_locker_status(
     response_model=AssignmentRead,
     status_code=status.HTTP_201_CREATED,
     tags=["assignments"],
-    dependencies=[Depends(admin_user)],
 )
-def create_assignment(payload: AssignmentCreate, db: Session = Depends(get_db)) -> Assignment:
+def create_assignment(payload: AssignmentCreate, admin: User = Depends(admin_user),
+                      db: Session = Depends(get_db)) -> Assignment:
     student = db.get(Student, payload.student_id)
     if student is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -228,6 +246,10 @@ def create_assignment(payload: AssignmentCreate, db: Session = Depends(get_db)) 
     assignment = Assignment(student_id=student.id, locker_id=locker.id)
     locker.status = LockerStatus.OCCUPIED
     db.add(assignment)
+    _flush_or_conflict(db, "Locker availability changed; refresh the registry and try again.")
+    record_event(db, admin, "assignment.created", "assignment", assignment.id)
+    notify_student(db, student.id, "Locker assigned",
+                   f"Locker {locker.locker_number} has been assigned to you.")
     _commit_or_conflict(db, "Locker availability changed; refresh the registry and try again.")
     db.refresh(assignment)
     return assignment
@@ -255,9 +277,9 @@ def list_assignments(
     "/assignments/{assignment_id}/end",
     response_model=AssignmentRead,
     tags=["assignments"],
-    dependencies=[Depends(admin_user)],
 )
-def end_assignment(assignment_id: int, db: Session = Depends(get_db)) -> Assignment:
+def end_assignment(assignment_id: int, admin: User = Depends(admin_user),
+                   db: Session = Depends(get_db)) -> Assignment:
     assignment = db.get(Assignment, assignment_id)
     if assignment is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found.")
@@ -277,6 +299,9 @@ def end_assignment(assignment_id: int, db: Session = Depends(get_db)) -> Assignm
     locker.status = (
         LockerStatus.MAINTENANCE if _has_open_repair(db, locker.id) else LockerStatus.AVAILABLE
     )
+    record_event(db, admin, "assignment.ended", "assignment", assignment.id)
+    notify_student(db, assignment.student_id, "Locker assignment ended",
+                   f"Your assignment to locker {locker.locker_number} has ended.")
     _commit_or_conflict(db, "The assignment could not be ended due to a data conflict.")
     db.refresh(assignment)
     return assignment

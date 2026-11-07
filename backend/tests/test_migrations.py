@@ -42,6 +42,7 @@ def test_upgrade_downgrade_and_legacy_data(tmp_path, legacy):
     with engine.connect() as connection:
         assert connection.scalar(text("SELECT full_name FROM students")) == "Test Student"
     assert "repair_requests" in inspect(engine).get_table_names()
+    assert {"notifications", "audit_events"} <= set(inspect(engine).get_table_names())
     migrate(url, "downgrade", "0001")
     assert "users" not in inspect(engine).get_table_names()
     migrate(url, "upgrade", "head")

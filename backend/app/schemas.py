@@ -120,3 +120,40 @@ class RepairRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     closed_at: datetime | None
+
+
+class NotificationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    message: str
+    created_at: datetime
+    read_at: datetime | None
+
+
+class AuditEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_id: int | None
+    actor_username: str
+    action: str
+    entity_type: str
+    entity_id: int
+    occurred_at: datetime
+
+
+class StatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class AdminReport(BaseModel):
+    generated_at: datetime
+    lockers_total: int
+    lockers_by_status: list[StatusCount]
+    assignments_active: int
+    assignments_total: int
+    students_total: int
+    occupancy_rate_percent: float

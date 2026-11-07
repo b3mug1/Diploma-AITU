@@ -41,6 +41,8 @@ def test_repair_lifecycle_and_visibility(client, admin, workflow):
     assert client.post(API + "/repairs", headers=tech, json=payload).status_code == 403
     created = client.post(API + "/repairs", headers=student, json=payload)
     assert created.status_code == 201, created.text
+    assert any(item["title"] == "New repair request" for item in
+               client.get(API + "/notifications", headers=admin).json())
     path = API + f"/repairs/{created.json()['id']}"
     assert client.post(API + "/repairs", headers=student, json=payload).status_code == 409
     assert client.get(path, headers=other).status_code == 404
@@ -57,6 +59,8 @@ def test_repair_lifecycle_and_visibility(client, admin, workflow):
         client.post(path + "/assign", headers=admin, json={"technician_id": tech_id}).status_code
         == 200
     )
+    assert any(item["title"] == "Repair assigned" for item in
+               client.get(API + "/notifications", headers=tech).json())
     assert client.get(path, headers=other_tech).status_code == 404
     assert client.get(path, headers=tech).status_code == 200
     assert (
@@ -83,6 +87,11 @@ def test_repair_lifecycle_and_visibility(client, admin, workflow):
         path + "/status", headers=tech, json={"status": "resolved", "resolution": "Hinge replaced"}
     )
     assert closed.status_code == 200, closed.text
+    assert any(item["message"].endswith("resolved.") for item in
+               client.get(API + "/notifications", headers=student).json())
+    actions = {item["action"] for item in
+               client.get(API + "/admin/audit-events", headers=admin).json()}
+    assert {"repair.created", "repair.assigned", "repair.status_changed"} <= actions
     assert closed.json()["closed_at"] and closed.json()["resolution"] == "Hinge replaced"
     assert client.get(API + "/lockers", headers=admin).json()[0]["status"] == "available"
     assert (

@@ -6,9 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.activity import notify_admins, notify_user, record_event
 from app.database import get_db
 from app.models import Assignment, Locker, LockerStatus, RepairRequest, RepairStatus, Role, User
-from app.routes import _commit_or_conflict
+from app.routes import _commit_or_conflict, _flush_or_conflict
 from app.schemas import RepairAssign, RepairCreate, RepairRead, RepairTransition
 from app.security import admin_user, current_user
 
@@ -76,6 +77,9 @@ def create_repair(
     if locker.status == LockerStatus.AVAILABLE:
         locker.status = LockerStatus.MAINTENANCE
     db.add(repair)
+    _flush_or_conflict(db, "An active repair request already exists.")
+    record_event(db, user, "repair.created", "repair", repair.id)
+    notify_admins(db, "New repair request", f"Repair request #{repair.id} was created.", user.id)
     _commit_or_conflict(db, "An active repair request already exists.")
     db.refresh(repair)
     return repair
@@ -117,6 +121,10 @@ def assign_repair(
         raise HTTPException(422, "Choose an active technician account.")
     repair.technician_id = technician.id
     repair.status = RepairStatus.ASSIGNED
+    record_event(db, user, "repair.assigned", "repair", repair.id)
+    notify_user(db, technician.id, "Repair assigned", f"Repair request #{repair.id} is assigned to you.")
+    notify_user(db, repair.reporter_id, "Repair assigned",
+                f"Repair request #{repair.id} has been assigned to a technician.")
     db.commit()
     db.refresh(repair)
     return repair
@@ -159,6 +167,10 @@ def transition_repair(
             )
             locker.status = LockerStatus.OCCUPIED if occupied else LockerStatus.AVAILABLE
     repair.status = payload.status
+    record_event(db, user, "repair.status_changed", "repair", repair.id)
+    if repair.reporter_id != user.id:
+        notify_user(db, repair.reporter_id, "Repair status changed",
+                    f"Repair request #{repair.id} is now {payload.status.value}.")
     db.commit()
     db.refresh(repair)
     return repair
