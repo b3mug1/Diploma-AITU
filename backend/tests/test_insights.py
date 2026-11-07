@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import User, UserRole
+from app.models import Role, User
 from app.security import hash_password
 
 
@@ -42,7 +42,7 @@ def client():
     factory = sessionmaker(engine, expire_on_commit=False)
     with factory() as db:
         db.add(User(username="admin", password_hash=hash_password("secure-password-123"),
-                    role=UserRole.ADMIN))
+                    role=Role.ADMIN))
         db.commit()
 
     def override_db():

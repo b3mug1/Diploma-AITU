@@ -2,7 +2,7 @@
 
 **Diploma project topic:** “Development of an Information System for Managing Locker Allocation and Operations in an Educational Institution.”
 
-The project concerns a web-based system for maintaining locker records, assignments, and fault reports. The project remains in analysis and design, with an initial partial FastAPI backend now available. The current process and user needs still require empirical validation.
+The project concerns a web-based system for maintaining locker records, assignments, and fault reports. An initial working prototype now includes a role-aware React interface, a FastAPI API, PostgreSQL migrations, and a Docker Compose setup. The current process and user needs still require empirical validation.
 
 ## Problem and objective
 
@@ -26,29 +26,15 @@ Social status, academic performance (GPA), and activity are not approved allocat
 
 ## Provisional technologies
 
-The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy for the server, PostgreSQL for data storage, and Docker Compose for local deployment. WebSocket is one option for updating the interface. All choices are provisional; alternatives and selection criteria are documented in the [technology comparison](docs/technology-comparison.md).
+The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy for the server, PostgreSQL for data storage, and Docker Compose for local deployment. WebSocket is a possible future option for updating the interface; it is not currently implemented.
 
-## Documentation
+## Project materials
 
-- [Project proposal](docs/project-proposal.md)
-- [User research](docs/user-research.md)
-- [Questionnaire text](docs/google-form-questionnaire.md)
-- [Preliminary survey results](docs/survey-results.md)
-- [Student Google Form](https://forms.gle/SWRtDB8ZSErLt4qG6) — verify the actual form settings and responses
-- [Literature review](docs/literature-review.md)
-- [Existing-system comparison](docs/system-comparison.md)
-- [Technology comparison](docs/technology-comparison.md)
-- [Requirements and acceptance criteria](docs/requirements.md)
-- [Architecture and diagrams](docs/architecture.md)
-- [Scenarios and prototype](docs/prototype.md)
-- [Verification and evaluation plan](docs/evaluation-plan.md)
-- [Project management and risks](docs/project-management.md)
-- [Draft supervisor feedback for confirmation](docs/supervisor-feedback.md)
-- [Pre-defence checklist](docs/pre-defense-checklist.md)
-- [System context diagram for draw.io](diagrams/system-context.drawio)
-- [Use-case diagram for draw.io](diagrams/use-case.drawio)
-- [Component diagram for draw.io](diagrams/component.drawio)
-- [Mermaid sources and SVG exports](diagrams/)
+- [Pre-defence report](Locker_Management_System_Pre_Defence_Report.docx)
+- [Backend API and setup guide](backend/README.md)
+- [Frontend features and setup guide](frontend/README.md)
+- [Local Docker Compose configuration](compose.yaml)
+- [Student questionnaire](https://forms.gle/SWRtDB8ZSErLt4qG6) — verify the form settings and consent-filtered results before citing the responses.
 
 ## Team
 
@@ -62,10 +48,49 @@ The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy 
 
 ## Project management and running the project
 
+### Frontend
+
+The React 18 + Vite frontend is in [`frontend/`](frontend/README.md). Administrators can manage locker and student registries, assignments, user accounts, and repair tickets. Students can view their assignments, submit repair requests, and track their status. Technicians can view assigned tickets, start work, and record repair outcomes. Run `npm ci` and `npm run dev` from `frontend/` with a local backend. The production Dockerfile and Nginx configuration are also included.
+
 Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
-An initial FastAPI backend slice is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. Authentication, repair workflows, migrations, and Docker Compose remain to be completed. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
+The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It now includes revocable bearer sessions, server-side roles, scoped repair workflows, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
 
 ## Current status
 
-An initial set of analysis and design documents and a partial FastAPI backend have been prepared. The backend supports student and locker registry operations and basic assignments; it does not yet include authentication, repair requests, migrations, or deployment configuration. The preliminary summary of eight survey submissions requires verification of consent filtering and denominators. The following remain incomplete: confirmation of the current process, a visual prototype, approval of requirements and permissions, the remaining backend and Docker work, frontend implementation, and verified substantive feedback from the academic supervisor. Tasks are tracked on [YouTrack](https://nazarbek.youtrack.cloud/agiles/204-1/current). Individual task status is summarised in the [pre-defence checklist](docs/pre-defense-checklist.md).
+An initial analysis-and-design package and a working prototype have been prepared. The prototype supports the three user roles and the main locker-assignment and repair workflows. The preliminary summary of eight survey submissions still requires verification of consent filtering and denominators. Remaining work includes validating the current process and requirements with stakeholders, evaluating the interface with users, confirming role permissions and repair rules, reviewing production deployment needs, and obtaining verified substantive supervisor feedback. Tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current).
+
+
+## Run the complete local stack
+
+Requires Docker Desktop (or Docker Engine) and Docker Compose v2.
+From the repository root:
+
+```sh
+cp .env.example .env
+# Set POSTGRES_PASSWORD to a random URL-safe value in .env.
+docker compose up --build -d
+docker compose exec backend python -m app.bootstrap
+```
+
+Open http://localhost:8080 and sign in with the administrator you just created.
+`WEB_PORT` in `.env` changes the port. No default passwords are shipped.
+Compose starts PostgreSQL, waits for database health, runs Alembic in a one-shot
+`migrate` service, then starts the API and Nginx frontend after readiness checks.
+The API and database are not published to host ports. The UI listens on loopback.
+The API prefix in this stack is fixed at `/api/v1` to match Nginx and the frontend.
+
+```sh
+docker compose ps -a
+docker compose logs migrate backend
+docker compose exec backend alembic current
+docker compose down
+```
+
+Database records persist in the `postgres_data` named volume across shutdowns.
+Do not remove this volume unless intentionally discarding the database.
+On upgrades, rerun `docker compose up --build -d` and inspect migration logs.
+Environment configuration and credentials belong in ignored `.env` files.
+See [backend instructions](backend/README.md) for permissions, API examples,
+legacy database migration and verification. Repair rules and role permissions
+are provisional and still require organisational approval.

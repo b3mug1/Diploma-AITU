@@ -2,12 +2,13 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models import LockerStatus
+from app.models import LockerStatus, RepairStatus, Role
 
 
 class StudentCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     student_code: str = Field(min_length=1, max_length=64)
     full_name: str = Field(min_length=1, max_length=200)
 
@@ -20,6 +21,7 @@ class StudentRead(StudentCreate):
 
 
 class LockerCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
     locker_number: str = Field(min_length=1, max_length=64)
     location: str | None = Field(default=None, max_length=200)
 
@@ -51,3 +53,107 @@ class AssignmentRead(BaseModel):
     locker_id: int
     started_at: datetime
     ended_at: datetime | None
+
+
+class Login(BaseModel):
+    username: str = Field(min_length=1, max_length=64, pattern=r"^[a-zA-Z0-9_.-]+$")
+    password: str = Field(min_length=1, max_length=128)
+
+
+class UserCreate(Login):
+    password: str = Field(min_length=12, max_length=128)
+    role: Role
+    student_id: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def linked_student(self):
+        if (self.role == Role.STUDENT) != (self.student_id is not None):
+            raise ValueError("Only student accounts must have a student_id")
+        return self
+
+
+class UserRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    username: str
+    role: Role
+    student_id: int | None
+    is_active: bool
+
+
+class TokenRead(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+
+
+class RepairCreate(BaseModel):
+    locker_id: int = Field(gt=0)
+    description: str = Field(min_length=5, max_length=2000)
+
+    @field_validator("description")
+    @classmethod
+    def trim_description(cls, value):
+        if len(value.strip()) < 5:
+            raise ValueError("Provide a meaningful description")
+        return value.strip()
+
+
+class RepairAssign(BaseModel):
+    technician_id: int = Field(gt=0)
+
+
+class RepairTransition(BaseModel):
+    status: RepairStatus
+    resolution: str | None = Field(default=None, max_length=2000)
+
+
+class RepairRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    locker_id: int
+    reporter_id: int
+    technician_id: int | None
+    description: str
+    status: RepairStatus
+    resolution: str | None
+    created_at: datetime
+    updated_at: datetime
+    closed_at: datetime | None
+
+
+class NotificationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    message: str
+    created_at: datetime
+    read_at: datetime | None
+
+
+class AuditEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_id: int | None
+    actor_username: str
+    action: str
+    entity_type: str
+    entity_id: int
+    occurred_at: datetime
+
+
+class StatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class AdminReport(BaseModel):
+    generated_at: datetime
+    lockers_total: int
+    lockers_by_status: list[StatusCount]
+    assignments_active: int
+    assignments_total: int
+    students_total: int
+    occupancy_rate_percent: float
