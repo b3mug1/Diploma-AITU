@@ -7,11 +7,13 @@ the authority for authentication and permissions.
 
 - **Administrator:** manage student and locker registries, create assignments,
   view and close repair requests, assign technicians, and create or deactivate
-  user accounts.
+  user accounts, reactivate them, and reset another user's password.
 - **Student:** view current and previous locker assignments, submit a repair
   request for an assigned locker, and track personal requests and outcomes.
 - **Technician:** view assigned repair requests, mark a repair as in progress,
   and record the resolution when work is complete.
+- **All roles:** change their own password after entering the current password.
+  Password changes end all sessions and require a new sign-in.
 
 ## Local development
 
