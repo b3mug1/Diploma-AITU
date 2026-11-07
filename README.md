@@ -50,15 +50,22 @@ The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy 
 
 ### Frontend
 
-The React 18 + Vite frontend is in [`frontend/`](frontend/README.md). Administrators can manage locker and student registries, assignments, user accounts, and repair tickets. Students can view their assignments, submit repair requests, and track their status. Technicians can view assigned tickets, start work, and record repair outcomes. Run `npm ci` and `npm run dev` from `frontend/` with a local backend. The production Dockerfile and Nginx configuration are also included.
+The React 18 + Vite frontend is in [`frontend/`](frontend/README.md). Administrators can manage locker and student registries, assignments, user accounts, and repair tickets. They can deactivate and reactivate accounts and reset another user's password. All three roles can change their own password by entering the current password. Students can view their assignments, submit repair requests, and track their status. Technicians can view assigned tickets, start work, and record repair outcomes. Run `npm ci` and `npm run dev` from `frontend/` with a local backend. The production Dockerfile and Nginx configuration are also included.
 
 Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
-The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It now includes revocable bearer sessions, server-side roles, scoped repair workflows, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
+The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It includes revocable bearer sessions, server-side roles, scoped repair workflows, in-app notifications, audit events, administrator reports, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
+
+### Account and session management
+
+- Administrators create accounts, deactivate or reactivate them, and reset another user's password. Self-deactivation and administrator reset of their own password are blocked.
+- Each authenticated user can change their own password after providing the current password. New passwords must be 12–128 characters.
+- Password changes and administrator resets revoke all sessions for the affected account, requiring a new sign-in. Successful account actions are recorded in the audit history.
+- Passwords are stored as hashes and are never included in API account responses. See the [backend API guide](backend/README.md) for route details.
 
 ## Current status
 
-An initial analysis-and-design package and a working prototype have been prepared. The prototype supports the three user roles and the main locker-assignment and repair workflows. The preliminary summary of eight survey submissions still requires verification of consent filtering and denominators. Remaining work includes validating the current process and requirements with stakeholders, evaluating the interface with users, confirming role permissions and repair rules, reviewing production deployment needs, and obtaining verified substantive supervisor feedback. Tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current).
+An initial analysis-and-design package and a working prototype have been prepared. The prototype supports the three user roles, the main locker-assignment and repair workflows, account password management, and administrator account reactivation. The preliminary summary of eight survey submissions still requires verification of consent filtering and denominators. Remaining work includes validating the current process and requirements with stakeholders, evaluating the interface with users, confirming role permissions and repair rules, reviewing production deployment needs, and obtaining verified substantive supervisor feedback. Tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current).
 
 
 ## Run the complete local stack
