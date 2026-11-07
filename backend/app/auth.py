@@ -13,7 +13,7 @@ from app.config import SESSION_HOURS
 from app.database import get_db
 from app.models import AuthSession, Student, User
 from app.routes import _commit_or_conflict
-from app.schemas import Login, TokenRead, UserCreate, UserRead
+from app.schemas import Login, PasswordChange, PasswordReset, TokenRead, UserCreate, UserRead
 from app.security import (
     admin_user,
     bearer,
@@ -59,6 +59,22 @@ def logout(
 @router.get("/auth/me", response_model=UserRead)
 def me(user: User = Depends(current_user)):
     return user
+
+
+@router.post("/auth/change-password", status_code=204)
+def change_password(
+    payload: PasswordChange,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(400, "Current password is incorrect.")
+    if verify_password(payload.new_password, user.password_hash):
+        raise HTTPException(400, "New password must differ from the current password.")
+    user.password_hash = hash_password(payload.new_password)
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
+    record_event(db, user, "user.password_changed", "user", user.id)
+    db.commit()
 
 
 @router.post(
@@ -109,3 +125,35 @@ def deactivate(user_id: int, admin: User = Depends(admin_user), db: Session = De
         record_event(db, admin, "user.deactivated", "user", user_id)
         db.commit()
     return user
+
+
+@router.post("/users/{user_id}/activate", response_model=UserRead)
+def activate(user_id: int, admin: User = Depends(admin_user), db: Session = Depends(get_db)):
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "User not found.")
+    if not user.is_active:
+        user.is_active = True
+        record_event(db, admin, "user.activated", "user", user_id)
+        db.commit()
+    return user
+
+
+@router.post("/users/{user_id}/reset-password", status_code=204)
+def reset_password(
+    user_id: int,
+    payload: PasswordReset,
+    admin: User = Depends(admin_user),
+    db: Session = Depends(get_db),
+):
+    if user_id == admin.id:
+        raise HTTPException(409, "Change your own password with the current password.")
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "User not found.")
+    if verify_password(payload.new_password, user.password_hash):
+        raise HTTPException(400, "New password must differ from the current password.")
+    user.password_hash = hash_password(payload.new_password)
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))
+    record_event(db, admin, "user.password_reset", "user", user_id)
+    db.commit()
