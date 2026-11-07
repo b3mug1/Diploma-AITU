@@ -40,8 +40,11 @@ All routes use `/api/v1` by default (`API_PREFIX` locally).
 | POST | `/auth/login` | Username/password JSON; returns token and expiry |
 | GET | `/auth/me` | Current authenticated account |
 | POST | `/auth/logout` | Revoke current session; 204 response |
+| POST | `/auth/change-password` | Current user; requires current and new password, revokes all sessions |
 | POST, GET | `/users` | Administrator creates/lists accounts |
 | POST | `/users/{id}/deactivate` | Administrator; revokes all sessions; cannot deactivate self |
+| POST | `/users/{id}/activate` | Administrator; restore a deactivated account |
+| POST | `/users/{id}/reset-password` | Administrator; set another user's password and revoke their sessions |
 | POST, GET | `/students` | Administrator registry |
 | POST, GET | `/lockers` | Administrator registry; optional `?status=available` |
 | GET | `/lockers/{id}` | Administrator; student for an assigned or personally reported locker; technician for a locker linked to an assigned request |
@@ -64,6 +67,9 @@ List endpoints accept `offset` (>=0), `limit` (1–100, default 50).
 Student users require a unique `student_id` referencing the student registry;
 admin and technician accounts must not have a student link. No GPA, social status,
 or automatic allocation rules are implemented.
+Passwords must be 12–128 characters. After a password change or administrator reset,
+the affected user must sign in again. Passwords are never returned by the API;
+successful password and account-status changes are recorded in the audit history.
 
 Notifications are stored in the database and retrieved through the API; email,
 push delivery and frontend integration are not included. Students with an active
