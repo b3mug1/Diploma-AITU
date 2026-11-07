@@ -54,6 +54,7 @@
 .registry .empty { border-top: 1px solid #edf0e7; }
 .header-tools { display: flex; align-items: center; gap: 14px; }
 .header-logout { display: none; padding: 8px 12px; font-size: 10px; }
+.account-password-button { padding: 8px 12px; font-size: 11px; }
 
 @media(max-width:700px) {
   .account-panel { display: none; }

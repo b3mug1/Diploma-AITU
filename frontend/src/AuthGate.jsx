@@ -19,7 +19,16 @@ export function AuthGate({ children }) {
       setError('Сессия истекла. Войдите снова.');
     };
     window.addEventListener('session-expired', expired);
-    return () => window.removeEventListener('session-expired', expired);
+    const passwordChanged = () => {
+      setToken(null);
+      setUser(null);
+      setError('Пароль изменён. Войдите снова.');
+    };
+    window.addEventListener('password-changed', passwordChanged);
+    return () => {
+      window.removeEventListener('session-expired', expired);
+      window.removeEventListener('password-changed', passwordChanged);
+    };
   }, []);
 
   async function login(event) {

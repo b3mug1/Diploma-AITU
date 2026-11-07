@@ -84,6 +84,12 @@ export function AdminDashboard({ user, onLogout, loggingOut }) {
       await save(`/repairs/${dialog.repair.id}/assign`, { technician_id: Number(values.technician_id) });
     } else if (dialog?.type === 'cancel-repair') {
       await save(`/repairs/${dialog.repair.id}/status`, { status: 'cancelled', resolution: values.resolution.trim() }, 'PATCH');
+    } else if (dialog?.type === 'reset-password') {
+      if (values.new_password !== values.confirm_password) {
+        setError('Новые пароли не совпадают.');
+        return;
+      }
+      await save(`/users/${dialog.account.id}/reset-password`, { new_password: values.new_password });
     }
   }
 
@@ -161,7 +167,7 @@ export function AdminDashboard({ user, onLogout, loggingOut }) {
             {rows.map((item) => <tr key={item.id}><td>#{item.id}<small className="table-subtext">{formatDate(item.created_at)}</small></td><td>{lockerById[item.locker_id]?.locker_number || `#${item.locker_id}`}</td><td className="description-cell">{item.description}</td><td>{userById[item.reporter_id]?.username || `#${item.reporter_id}`}</td><td>{userById[item.technician_id]?.username || 'Не назначен'}</td><td><StatusBadge status={item.status} /></td><td className="action-cell">{['open', 'assigned'].includes(item.status) && activeTechnicians.length > 0 && <button className="text-button" disabled={busy} onClick={() => setDialog({ type: 'assign-repair', repair: item })}>{item.technician_id ? 'Переназначить' : 'Назначить'}</button>}{['open', 'assigned', 'in_progress'].includes(item.status) && <button className="text-button danger-text" disabled={busy} onClick={() => setDialog({ type: 'cancel-repair', repair: item })}>Закрыть</button>}</td></tr>)}
           </tbody></table>}
           {tab === 'users' && <table><thead><tr><th>Пользователь</th><th>Роль</th><th>Связанный студент</th><th>Статус</th><th></th></tr></thead><tbody>
-            {rows.map((item) => <tr key={item.id}><td><b>{item.username}</b></td><td>{roleNames[item.role] || item.role}</td><td>{item.student_id ? studentById[item.student_id]?.full_name || `#${item.student_id}` : '—'}</td><td><span className={`badge ${item.is_active ? 'status-available' : 'status-out_of_service'}`}>{item.is_active ? 'Активна' : 'Отключена'}</span></td><td>{item.is_active && item.id !== user.id && <button className="text-button danger-text" disabled={busy} onClick={() => deactivate(item)}>Отключить</button>}</td></tr>)}
+            {rows.map((item) => <tr key={item.id}><td><b>{item.username}</b></td><td>{roleNames[item.role] || item.role}</td><td>{item.student_id ? studentById[item.student_id]?.full_name || `#${item.student_id}` : '—'}</td><td><span className={`badge ${item.is_active ? 'status-available' : 'status-out_of_service'}`}>{item.is_active ? 'Активна' : 'Отключена'}</span></td><td className="action-cell">{item.id !== user.id && <><button className="text-button" disabled={busy} onClick={() => setDialog({ type: 'reset-password', account: item })}>Сбросить пароль</button>{item.is_active ? <button className="text-button danger-text" disabled={busy} onClick={() => deactivate(item)}>Отключить</button> : <button className="text-button" disabled={busy} onClick={() => save(`/users/${item.id}/activate`)}>Включить</button>}</>}</td></tr>)}
           </tbody></table>}
         </div>
         {!loading && rows.length === 0 && <EmptyState title={search ? 'Совпадений нет' : 'Записей пока нет'} detail={search ? 'Измените поисковый запрос.' : 'Добавьте первую запись или обновите список.'} />}
@@ -169,30 +175,33 @@ export function AdminDashboard({ user, onLogout, loggingOut }) {
 
       {dialog && <AdminDialog
         dialog={dialog} data={data} user={user} availableLockers={availableLockers}
-        activeTechnicians={activeTechnicians} busy={busy} onClose={() => setDialog(null)} onSubmit={submitDialog}
+        activeTechnicians={activeTechnicians} busy={busy} error={error} onClose={() => setDialog(null)} onSubmit={submitDialog}
       />}
     </DashboardShell>
   );
 }
 
-function AdminDialog({ dialog, data, user, availableLockers, activeTechnicians, busy, onClose, onSubmit }) {
+function AdminDialog({ dialog, data, user, availableLockers, activeTechnicians, busy, error, onClose, onSubmit }) {
   const [role, setRole] = useState('student');
   const isRepair = typeof dialog === 'object';
   let title = { lockers: 'Новый шкафчик', students: 'Новый студент', assignments: 'Назначить шкафчик', users: 'Создать учётную запись' }[dialog];
   if (dialog?.type === 'assign-repair') title = `Назначить технику · заявка #${dialog.repair.id}`;
   if (dialog?.type === 'cancel-repair') title = `Закрыть заявку #${dialog.repair.id}`;
+  if (dialog?.type === 'reset-password') title = `Сбросить пароль: ${dialog.account.username}`;
 
   return (
     <div className="overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="modal">
         <div className="modal-head"><h2 id="dialog-title">{title}</h2><button type="button" className="secondary close-button" aria-label="Закрыть" onClick={onClose}>×</button></div>
         <form onSubmit={onSubmit}>
+          {error && <p className="alert" role="alert">{error}</p>}
           {dialog === 'lockers' && <><label>Номер шкафчика<input name="locker_number" required maxLength={64} placeholder="Например, A-101" /></label><label>Расположение<input name="location" maxLength={200} placeholder="Корпус A, 1 этаж" /></label></>}
           {dialog === 'students' && <><label>ФИО студента<input name="full_name" required maxLength={200} /></label><label>Код студента<input name="student_code" required maxLength={64} /></label></>}
           {dialog === 'assignments' && <><label>Студент<select name="student_id" required defaultValue=""><option value="" disabled>Выберите студента</option>{data.students.map((item) => <option key={item.id} value={item.id}>{item.full_name} · {item.student_code}</option>)}</select></label><label>Свободный шкафчик<select name="locker_id" required defaultValue=""><option value="" disabled>Выберите шкафчик</option>{availableLockers.map((item) => <option key={item.id} value={item.id}>{item.locker_number} · {item.location || 'Расположение не указано'}</option>)}</select></label>{(!data.students.length || !availableLockers.length) && <p className="form-hint">Для назначения нужен студент и свободный шкафчик.</p>}</>}
           {dialog === 'users' && <><label>Имя пользователя<input name="username" required minLength={1} maxLength={64} pattern="[A-Za-z0-9_.-]+" /></label><label>Пароль<input name="password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /><small className="form-hint">Минимум 12 символов.</small></label><label>Роль<select name="role" value={role} onChange={(e) => setRole(e.target.value)}><option value="student">Студент</option><option value="technician">Техник</option><option value="admin">Администратор</option></select></label>{role === 'student' && <label>Связать со студентом<select name="student_id" required defaultValue=""><option value="" disabled>Выберите запись студента</option>{data.students.filter((student) => !data.users.some((account) => account.student_id === student.id)).map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.student_code}</option>)}</select></label>}</>}
           {dialog?.type === 'assign-repair' && <label>Техник<select name="technician_id" required defaultValue={dialog.repair.technician_id || ''}><option value="" disabled>Выберите техника</option>{activeTechnicians.map((item) => <option key={item.id} value={item.id}>{item.username}</option>)}</select></label>}
           {dialog?.type === 'cancel-repair' && <><p className="form-hint">Укажите причину закрытия заявки.</p><label>Причина<textarea name="resolution" required minLength={3} maxLength={2000} rows={4} /></label></>}
+          {dialog?.type === 'reset-password' && <><p className="form-hint">Все действующие сеансы пользователя завершатся.</p><label>Новый пароль<input name="new_password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label><label>Повторите пароль<input name="confirm_password" type="password" required minLength={12} maxLength={128} autoComplete="new-password" /></label></>}
           {dialog === 'assignments' && (!data.students.length || !availableLockers.length) ? <button className="submit" disabled>Нет данных для назначения</button> : <button className="submit" disabled={busy || (isRepair && dialog.type === 'assign-repair' && !activeTechnicians.length)}>{busy ? 'Сохраняем…' : 'Сохранить'}</button>}
         </form>
       </section>
