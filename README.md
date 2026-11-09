@@ -54,7 +54,7 @@ The React 18 + Vite frontend is in [`frontend/`](frontend/README.md). Administra
 
 Project tasks are tracked on the [YouTrack Agile board](https://nazarbek.youtrack.cloud/agiles/204-1/current). Dates, assignees, and statuses should be kept consistent with the pre-defence materials.
 
-The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It includes revocable bearer sessions, server-side roles, scoped repair workflows, in-app notifications, audit events, administrator reports, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
+The FastAPI backend is in [`backend/`](backend/README.md). It covers student and locker registries and locker assignments, using SQLite locally and a configurable PostgreSQL URL. It includes administrator-only registry editing, atomic CSV imports with row errors, revocable bearer sessions, server-side roles, scoped repair workflows, in-app notifications, audit events, administrator reports, Alembic migrations and Docker Compose. The backend README contains local run instructions. Do not commit passwords, API keys, or personal data; use synthetic records during development.
 
 ### Account and session management
 

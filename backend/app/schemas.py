@@ -7,7 +7,18 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from app.models import LockerStatus, RepairStatus, Role
 
 
-class StudentCreate(BaseModel):
+class RegistryInput(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    @field_validator("*", check_fields=False)
+    @classmethod
+    def reject_null_bytes(cls, value):
+        if isinstance(value, str) and "\x00" in value:
+            raise ValueError("NUL characters are not allowed")
+        return value
+
+
+class StudentCreate(RegistryInput):
     model_config = ConfigDict(str_strip_whitespace=True)
     student_code: str = Field(min_length=1, max_length=64)
     full_name: str = Field(min_length=1, max_length=200)
@@ -20,7 +31,7 @@ class StudentRead(StudentCreate):
     created_at: datetime
 
 
-class LockerCreate(BaseModel):
+class LockerCreate(RegistryInput):
     model_config = ConfigDict(str_strip_whitespace=True)
     locker_number: str = Field(min_length=1, max_length=64)
     location: str | None = Field(default=None, max_length=200)
@@ -151,6 +162,8 @@ class AuditEventRead(BaseModel):
     entity_type: str
     entity_id: int
     occurred_at: datetime
+    before: dict | None
+    after: dict | None
 
 
 class StatusCount(BaseModel):
@@ -166,3 +179,26 @@ class AdminReport(BaseModel):
     assignments_total: int
     students_total: int
     occupancy_rate_percent: float
+
+
+class RegistryUpdate(RegistryInput):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+
+    @model_validator(mode="after")
+    def nonempty_nonnull(self):
+        changes = self.model_dump(exclude_unset=True)
+        if not changes:
+            raise ValueError("Provide at least one field to update")
+        if any(value is None for key, value in changes.items() if key != "location"):
+            raise ValueError("Required registry fields cannot be null")
+        return self
+
+
+class StudentUpdate(RegistryUpdate):
+    student_code: str | None = Field(default=None, min_length=1, max_length=64)
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class LockerUpdate(RegistryUpdate):
+    locker_number: str | None = Field(default=None, min_length=1, max_length=64)
+    location: str | None = Field(default=None, max_length=200)
