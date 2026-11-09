@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { NotificationsPanel } from './NotificationsPanel';
 import { insightNavigation } from './insightNavigation';
+import { AuditPanel } from './AuditPanel';
 
 const roleNames = {
   admin: 'Администратор',
@@ -22,7 +23,8 @@ export function DashboardShell({
 }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [insightTab, setInsightTab] = useState(null);
-  const extraNavigation = insightNavigation(user.role).filter(item => item.id === 'notifications');
+  const extraNavigation = insightNavigation(user.role).filter(item => item.id !== 'reports');
+  const allowedInsightTab = extraNavigation.some(item => item.id === insightTab) ? insightTab : null;
   const visibleTitle = extraNavigation.find(item => item.id === insightTab)?.label || title;
   return (
     <div className="app">
@@ -67,7 +69,8 @@ export function DashboardShell({
             <p>{insightTab ? 'События и обновления университетского пространства.' : subtitle}</p>
           </div>
         </section>
-        {insightTab === 'notifications' ? <NotificationsPanel key={user.id} /> : children}
+        {allowedInsightTab === 'notifications' ? <NotificationsPanel key={user.id} />
+          : allowedInsightTab === 'audit' && user.role === 'admin' ? <AuditPanel /> : children}
         <div className="page-note"><span>AITU · Campus locker management</span><span>ASTANA · KAZAKHSTAN</span></div>
       </main>
       {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
