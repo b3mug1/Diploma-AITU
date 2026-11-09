@@ -3,6 +3,7 @@ import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { NotificationsPanel } from './NotificationsPanel';
 import { insightNavigation } from './insightNavigation';
 import { AuditPanel } from './AuditPanel';
+import { ReportsPanel } from './ReportsPanel';
 
 const roleNames = {
   admin: 'Администратор',
@@ -23,7 +24,7 @@ export function DashboardShell({
 }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [insightTab, setInsightTab] = useState(null);
-  const extraNavigation = insightNavigation(user.role).filter(item => item.id !== 'reports');
+  const extraNavigation = insightNavigation(user.role);
   const allowedInsightTab = extraNavigation.some(item => item.id === insightTab) ? insightTab : null;
   const visibleTitle = extraNavigation.find(item => item.id === insightTab)?.label || title;
   return (
@@ -70,7 +71,8 @@ export function DashboardShell({
           </div>
         </section>
         {allowedInsightTab === 'notifications' ? <NotificationsPanel key={user.id} />
-          : allowedInsightTab === 'audit' && user.role === 'admin' ? <AuditPanel /> : children}
+          : allowedInsightTab === 'audit' && user.role === 'admin' ? <AuditPanel />
+            : allowedInsightTab === 'reports' && user.role === 'admin' ? <ReportsPanel /> : children}
         <div className="page-note"><span>AITU · Campus locker management</span><span>ASTANA · KAZAKHSTAN</span></div>
       </main>
       {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
