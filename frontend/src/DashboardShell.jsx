@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { NotificationsPanel } from './NotificationsPanel';
+import { insightNavigation } from './insightNavigation';
 
 const roleNames = {
   admin: 'Администратор',
@@ -19,18 +21,24 @@ export function DashboardShell({
   children,
 }) {
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [insightTab, setInsightTab] = useState(null);
+  const extraNavigation = insightNavigation(user.role).filter(item => item.id === 'notifications');
+  const visibleTitle = extraNavigation.find(item => item.id === insightTab)?.label || title;
   return (
     <div className="app">
       <aside>
         <a className="brand" href="/" aria-label="AITU Locker Management System">aitu<span className="brand-dot">®</span></a>
         <div className="workspace">LOCKER MANAGEMENT</div>
         <nav aria-label="Разделы">
-          {navigation.map((item) => (
+          {[...navigation, ...extraNavigation].map((item) => (
             <button
               key={item.id}
-              className={activeTab === item.id ? 'selected' : ''}
-              onClick={() => onTabChange?.(item.id)}
-              aria-current={activeTab === item.id ? 'page' : undefined}
+              className={(insightTab || activeTab) === item.id ? 'selected' : ''}
+              onClick={() => {
+                if (extraNavigation.some(extra => extra.id === item.id)) setInsightTab(item.id);
+                else { setInsightTab(null); onTabChange?.(item.id); }
+              }}
+              aria-current={(insightTab || activeTab) === item.id ? 'page' : undefined}
             >
               <span aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
@@ -49,17 +57,17 @@ export function DashboardShell({
       </aside>
       <main>
         <header>
-          <span>Управление кампусом <span className="slash">/</span> {title}</span>
+          <span>Управление кампусом <span className="slash">/</span> {visibleTitle}</span>
           <div className="header-tools"><span className="version">LMS / 01</span><button className="secondary account-password-button" onClick={() => setPasswordOpen(true)}>Сменить пароль</button><button className="header-logout" onClick={onLogout} disabled={loggingOut}>{loggingOut ? '…' : 'Выйти'}</button></div>
         </header>
         <section className="heading">
           <div>
             <div className="eyebrow">LOCKER MANAGEMENT SYSTEM</div>
-            <h1>{title}<span>.</span></h1>
-            <p>{subtitle}</p>
+            <h1>{visibleTitle}<span>.</span></h1>
+            <p>{insightTab ? 'События и обновления университетского пространства.' : subtitle}</p>
           </div>
         </section>
-        {children}
+        {insightTab === 'notifications' ? <NotificationsPanel key={user.id} /> : children}
         <div className="page-note"><span>AITU · Campus locker management</span><span>ASTANA · KAZAKHSTAN</span></div>
       </main>
       {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
