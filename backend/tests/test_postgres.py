@@ -78,3 +78,43 @@ def test_competing_assignments_and_repair(client, admin):
     assert repair.status_code == 201
     assert client.get(API + "/lockers", headers=admin).json()[0]["status"] == "maintenance"
     assert assign().status_code == 409
+
+
+@pytest.mark.parametrize(
+    "registry,model_name,csv",
+    [
+        ("students", "Student", "student_code,full_name\nRACE1,One\nRACE2,Two\n"),
+        ("lockers", "Locker", "locker_number,location\nRACE1,One\nRACE2,Two\n"),
+    ],
+)
+def test_competing_csv_imports_are_atomic(client, admin, db_factory, registry, model_name, csv):
+    from sqlalchemy import event, func, select
+    from sqlalchemy.orm import Session
+
+    from app import models
+
+    model = getattr(models, model_name)
+    barrier = Barrier(2)
+
+    def before_flush(db, context, instances):
+        # Hold both imports after duplicate prechecks, before their first INSERT.
+        if any(isinstance(record, model) for record in db.new) and not db.info.get("csv_race"):
+            db.info["csv_race"] = True
+            barrier.wait(timeout=10)
+
+    def upload():
+        return client.post(
+            API + f"/{registry}/import",
+            headers={**admin, "Content-Type": "text/csv"},
+            content=csv,
+        )
+
+    event.listen(Session, "before_flush", before_flush)
+    try:
+        results = race(upload, upload)
+    finally:
+        event.remove(Session, "before_flush", before_flush)
+    assert sorted(response.status_code for response in results) == [201, 409]
+    with db_factory() as db:
+        assert db.scalar(select(func.count()).select_from(model)) == 2
+        assert db.scalar(select(func.count()).select_from(models.AuditEvent)) == 2
