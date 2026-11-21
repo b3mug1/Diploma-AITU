@@ -1,5 +1,7 @@
 # Locker Management System
 
+**Live Deployment:** [https://locker.b3mug1.dev](https://locker.b3mug1.dev)
+
 **Diploma project topic:** “Development of an Information System for Managing Locker Allocation and Operations in an Educational Institution.”
 
 The project concerns a web-based system for maintaining locker records, assignments, and fault reports. An initial working prototype now includes a role-aware React interface, a FastAPI API, PostgreSQL migrations, and a Docker Compose setup. The current process and user needs still require empirical validation.
@@ -30,9 +32,11 @@ The proposed stack is React and Vite for the web client, FastAPI and SQLAlchemy 
 
 ## Project materials
 
+- **Live Deployment:** [https://locker.b3mug1.dev](https://locker.b3mug1.dev)
 - [Pre-defence report](Locker_Management_System_Pre_Defence_Report.docx)
 - [Backend API and setup guide](backend/README.md)
 - [Frontend features and setup guide](frontend/README.md)
+- [Production Docker Compose configuration](docker-compose.prod.yml)
 - [Local Docker Compose configuration](compose.yaml)
 - [Student questionnaire](https://forms.gle/SWRtDB8ZSErLt4qG6) — verify the form settings and consent-filtered results before citing the responses.
 
@@ -101,3 +105,21 @@ Environment configuration and credentials belong in ignored `.env` files.
 See [backend instructions](backend/README.md) for permissions, API examples,
 legacy database migration and verification. Repair rules and role permissions
 are provisional and still require organisational approval.
+
+## Production deployment (AWS)
+
+The production stack is deployed to AWS EC2 behind a Caddy reverse proxy with TLS:
+
+- **Public URL:** [https://locker.b3mug1.dev](https://locker.b3mug1.dev)
+- **Configuration:** [`docker-compose.prod.yml`](docker-compose.prod.yml) and [`Caddyfile`](Caddyfile)
+
+```sh
+# Start production stack
+docker compose -f docker-compose.prod.yml up -d --build
+
+# Run migrations (handled automatically by the migrate service on startup)
+docker compose -f docker-compose.prod.yml exec backend alembic current
+
+# Create or bootstrap administrator
+docker compose -f docker-compose.prod.yml exec backend python -m app.bootstrap
+```
