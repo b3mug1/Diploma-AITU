@@ -1,0 +1,13 @@
+{
+    admin off
+    auto_https disable_redirects
+}
+
+http://locker.b3mug1.dev, https://locker.b3mug1.dev {
+    tls internal
+    reverse_proxy frontend:80
+}
+
+:80 {
+    reverse_proxy frontend:80
+}
