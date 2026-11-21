@@ -3,12 +3,21 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.activity import notify_admins, notify_user, record_event
 from app.database import get_db
-from app.models import Assignment, Locker, LockerStatus, RepairRequest, RepairStatus, Role, User
+from app.models import (
+    Assignment,
+    Locker,
+    LockerStatus,
+    RepairRequest,
+    RepairStatus,
+    Role,
+    User,
+    locker_capacity,
+)
 from app.routes import _commit_or_conflict, _flush_or_conflict
 from app.schemas import RepairAssign, RepairCreate, RepairRead, RepairTransition
 from app.security import admin_user, current_user
@@ -160,12 +169,16 @@ def transition_repair(
         repair.resolution = payload.resolution.strip()
         repair.closed_at = datetime.now(UTC)
         if locker.status == LockerStatus.MAINTENANCE:
-            occupied = db.scalar(
-                select(Assignment.id).where(
+            active_assignments = db.scalar(
+                select(func.count(Assignment.id)).where(
                     Assignment.locker_id == locker.id, Assignment.ended_at.is_(None)
                 )
+            ) or 0
+            locker.status = (
+                LockerStatus.OCCUPIED
+                if active_assignments >= locker_capacity(locker.locker_type)
+                else LockerStatus.AVAILABLE
             )
-            locker.status = LockerStatus.OCCUPIED if occupied else LockerStatus.AVAILABLE
     repair.status = payload.status
     record_event(db, user, "repair.status_changed", "repair", repair.id)
     if repair.reporter_id != user.id:

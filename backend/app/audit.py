@@ -6,7 +6,7 @@ from app.models import Locker
 
 def snapshot(record):
     fields = (
-        ("locker_number", "location", "status")
+        ("locker_number", "location", "block", "floor", "locker_type", "status")
         if isinstance(record, Locker)
         else ("student_code", "full_name")
     )

@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from app.models import (
     Role,
     Student,
     User,
+    locker_capacity,
 )
 from app.schemas import (
     AssignmentCreate,
@@ -188,17 +189,22 @@ def update_locker_status(
     )
     if locker is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Locker not found.")
-    active_assignment = db.scalar(
-        select(Assignment.id).where(
+    active_assignments = db.scalar(
+        select(func.count(Assignment.id)).where(
             Assignment.locker_id == locker_id, Assignment.ended_at.is_(None)
         )
+    ) or 0
+    expected_status = (
+        LockerStatus.OCCUPIED
+        if active_assignments >= locker_capacity(locker.locker_type)
+        else LockerStatus.AVAILABLE
     )
-    if active_assignment is not None and payload.status != LockerStatus.OCCUPIED:
+    if active_assignments and payload.status != expected_status:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="End the active assignment before changing this locker to a non-occupied status.",
         )
-    if payload.status == LockerStatus.OCCUPIED and active_assignment is None:
+    if not active_assignments and payload.status == LockerStatus.OCCUPIED:
         raise HTTPException(409, "Create an assignment to occupy a locker.")
     if payload.status == LockerStatus.AVAILABLE and _has_open_repair(db, locker.id):
         raise HTTPException(409, "Close the active repair before making the locker available.")
@@ -242,20 +248,36 @@ def create_assignment(
     if locker.status != LockerStatus.AVAILABLE or _has_open_repair(db, locker.id):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Locker is not available.")
 
-    existing = db.scalar(
-        select(Assignment.id).where(
+    active_count = db.scalar(
+        select(func.count(Assignment.id)).where(
             Assignment.locker_id == locker.id,
             Assignment.ended_at.is_(None),
         )
-    )
-    if existing is not None:
+    ) or 0
+    if active_count >= locker_capacity(locker.locker_type):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Locker already has an active assignment.",
+            detail="Locker has no remaining student capacity.",
+        )
+    existing_student_assignment = db.scalar(
+        select(Assignment.id).where(
+            Assignment.locker_id == locker.id,
+            Assignment.student_id == student.id,
+            Assignment.ended_at.is_(None),
+        )
+    )
+    if existing_student_assignment is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Student already has an active assignment to this locker.",
         )
 
     assignment = Assignment(student_id=student.id, locker_id=locker.id)
-    locker.status = LockerStatus.OCCUPIED
+    locker.status = (
+        LockerStatus.OCCUPIED
+        if active_count + 1 >= locker_capacity(locker.locker_type)
+        else LockerStatus.AVAILABLE
+    )
     db.add(assignment)
     _flush_or_conflict(db, "Locker availability changed; refresh the registry and try again.")
     record_event(db, admin, "assignment.created", "assignment", assignment.id)
@@ -312,8 +334,21 @@ def end_assignment(
         )
 
     assignment.ended_at = datetime.now(UTC)
+    remaining_assignments = db.scalar(
+        select(func.count(Assignment.id)).where(
+            Assignment.locker_id == locker.id,
+            Assignment.ended_at.is_(None),
+            Assignment.id != assignment.id,
+        )
+    ) or 0
     locker.status = (
-        LockerStatus.MAINTENANCE if _has_open_repair(db, locker.id) else LockerStatus.AVAILABLE
+        LockerStatus.MAINTENANCE
+        if _has_open_repair(db, locker.id)
+        else (
+            LockerStatus.OCCUPIED
+            if remaining_assignments >= locker_capacity(locker.locker_type)
+            else LockerStatus.AVAILABLE
+        )
     )
     record_event(db, admin, "assignment.ended", "assignment", assignment.id)
     notify_student(
@@ -387,5 +422,36 @@ def update_locker(
     db: Session = Depends(get_db),
     actor: User = Depends(admin_user),
 ):
-    """Edit number/location; use the guarded status endpoint for state changes."""
+    """Edit locker details without invalidating its active student assignments."""
+    changes = payload.model_dump(exclude_unset=True)
+    if {"block", "floor", "locker_type"} & changes.keys():
+        locker = db.scalar(
+            select(Locker)
+            .where(Locker.id == locker_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if locker is None:
+            raise HTTPException(404, "Registry record not found.")
+        values = {
+            "block": locker.block,
+            "floor": locker.floor,
+            "locker_type": locker.locker_type,
+        }
+        values.update({key: value for key, value in changes.items() if key in values})
+        if any(value is not None for value in values.values()) and any(
+            value is None for value in values.values()
+        ):
+            raise HTTPException(
+                422, "Block, floor, and locker type must be provided or cleared together."
+            )
+        active_count = db.scalar(
+            select(func.count(Assignment.id)).where(
+                Assignment.locker_id == locker_id, Assignment.ended_at.is_(None)
+            )
+        ) or 0
+        if active_count > locker_capacity(values["locker_type"]):
+            raise HTTPException(
+                409, "Locker type cannot be changed below its current number of assignments."
+            )
     return _update_registry(db, Locker, locker_id, payload, actor)
