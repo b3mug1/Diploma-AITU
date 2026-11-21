@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models import LockerStatus, RepairStatus, Role
+from app.models import LockerBlock, LockerStatus, LockerType, RepairStatus, Role
 
 
 class RegistryInput(BaseModel):
@@ -35,6 +35,18 @@ class LockerCreate(RegistryInput):
     model_config = ConfigDict(str_strip_whitespace=True)
     locker_number: str = Field(min_length=1, max_length=64)
     location: str | None = Field(default=None, max_length=200)
+    block: LockerBlock | None = None
+    floor: int | None = Field(default=None, ge=1, le=3)
+    locker_type: LockerType | None = None
+
+    @model_validator(mode="after")
+    def complete_location(self):
+        location_fields = (self.block, self.floor, self.locker_type)
+        if any(value is not None for value in location_fields) and any(
+            value is None for value in location_fields
+        ):
+            raise ValueError("Block, floor, and locker type must be provided together.")
+        return self
 
 
 class LockerStatusUpdate(BaseModel):
@@ -47,6 +59,9 @@ class LockerRead(BaseModel):
     id: int
     locker_number: str
     location: str | None
+    block: LockerBlock | None
+    floor: int | None
+    locker_type: LockerType | None
     status: LockerStatus
     created_at: datetime
 
@@ -189,7 +204,8 @@ class RegistryUpdate(RegistryInput):
         changes = self.model_dump(exclude_unset=True)
         if not changes:
             raise ValueError("Provide at least one field to update")
-        if any(value is None for key, value in changes.items() if key != "location"):
+        nullable_fields = {"location", "block", "floor", "locker_type"}
+        if any(value is None for key, value in changes.items() if key not in nullable_fields):
             raise ValueError("Required registry fields cannot be null")
         return self
 
@@ -202,3 +218,6 @@ class StudentUpdate(RegistryUpdate):
 class LockerUpdate(RegistryUpdate):
     locker_number: str | None = Field(default=None, min_length=1, max_length=64)
     location: str | None = Field(default=None, max_length=200)
+    block: LockerBlock | None = None
+    floor: int | None = Field(default=None, ge=1, le=3)
+    locker_type: LockerType | None = None

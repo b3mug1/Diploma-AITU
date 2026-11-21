@@ -28,6 +28,25 @@ class LockerStatus(str, Enum):
     OUT_OF_SERVICE = "out_of_service"
 
 
+class LockerBlock(str, Enum):
+    C1 = "C1"
+    C2 = "C2"
+    C3 = "C3"
+
+
+class LockerType(str, Enum):
+    SMALL_SINGLE_KEY = "small_single_key"
+    MEDIUM_SHARED_KEY = "medium_shared_key"
+    MEDIUM_SHARED_PIN = "medium_shared_pin"
+    LARGE_SINGLE_PIN = "large_single_pin"
+
+
+def locker_capacity(locker_type: str | None) -> int:
+    if locker_type in (LockerType.MEDIUM_SHARED_KEY, LockerType.MEDIUM_SHARED_PIN):
+        return 2
+    return 1
+
+
 class Student(Base):
     __tablename__ = "students"
 
@@ -45,6 +64,9 @@ class Locker(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     locker_number: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     location: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    block: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    floor: Mapped[int | None] = mapped_column(nullable=True)
+    locker_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
     status: Mapped[LockerStatus] = mapped_column(
         SqlEnum(
             LockerStatus,
@@ -63,8 +85,9 @@ class Assignment(Base):
     __tablename__ = "assignments"
     __table_args__ = (
         Index(
-            "uq_assignments_one_active_per_locker",
+            "uq_assignments_one_active_per_locker_student",
             "locker_id",
+            "student_id",
             unique=True,
             sqlite_where=text("ended_at IS NULL"),
             postgresql_where=text("ended_at IS NULL"),

@@ -78,7 +78,11 @@ def import_records(content, model, schema, key, db, actor):
     try:
         header = next(reader, [])
         required = {key, "full_name"} if model is Student else {key}
-        allowed = required if model is Student else required | {"location"}
+        allowed = (
+            required
+            if model is Student
+            else required | {"location", "block", "floor", "locker_type"}
+        )
         if (
             not required.issubset(header)
             or not set(header).issubset(allowed)
@@ -108,8 +112,10 @@ def import_records(content, model, schema, key, db, actor):
                 )
                 continue
             data = dict(zip(header, values))
-            if model is Locker and not data.get("location", "").strip():
-                data["location"] = None
+            if model is Locker:
+                for field in ("location", "block", "floor", "locker_type"):
+                    if field in data and not data[field].strip():
+                        data[field] = None
             try:
                 payload = schema.model_validate(data)
             except ValidationError as exc:

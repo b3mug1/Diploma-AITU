@@ -49,7 +49,7 @@ All routes use `/api/v1` by default (`API_PREFIX` locally).
 | PATCH | `/students/{id}` | Administrator; edit code/name in place |
 | POST | `/students/import` | Administrator; atomic, create-only CSV import |
 | POST, GET | `/lockers` | Administrator registry; optional `?status=available` |
-| PATCH | `/lockers/{id}` | Administrator; edit number/location in place |
+| PATCH | `/lockers/{id}` | Administrator; edit number/location/block/floor/type in place |
 | POST | `/lockers/import` | Administrator; atomic, create-only CSV import |
 | GET | `/lockers/{id}` | Administrator; student for an assigned or personally reported locker; technician for a locker linked to an assigned request |
 | PATCH | `/lockers/{id}/status` | Administrator; assignment and repair guards |
@@ -98,8 +98,9 @@ Example user JSON (administrator bearer header required):
 ## Registry editing and CSV imports
 
 `PATCH /students/{id}` accepts `student_code` and/or `full_name`.
-`PATCH /lockers/{id}` accepts `locker_number` and/or `location`; send
-`{"location":null}` to clear a location. For example:
+`PATCH /lockers/{id}` accepts `locker_number`, `location`, `block`, `floor`, and
+`locker_type`. Campus block, floor, and type must be supplied or cleared together.
+Send `{"location":null}` to clear the free-form location. For example:
 
 ```sh
 curl -X PATCH http://127.0.0.1:8000/api/v1/students/1 \
@@ -117,6 +118,30 @@ creation timestamps, linked accounts, active/ended assignments and repairs are
 preserved. Locker status can only be changed through the existing guarded
 `PATCH /lockers/{id}/status` endpoint.
 
+Campus location values are `C1`, `C2`, or `C3`; floors are `1`, `2`, or `3`.
+Locker types are `small_single_key` (one student, key), `medium_shared_key`
+(two students, key), `medium_shared_pin` (two students, PIN), and
+`large_single_pin` (one student, PIN). For example:
+
+```json
+{
+  "locker_number": "C2-2-M1",
+  "block": "C2",
+  "floor": 2,
+  "locker_type": "medium_shared_pin"
+}
+```
+
+The three campus fields are optional together for compatibility with existing
+records; if any is supplied, all three are required. Shared types allow two
+different students to be assigned at once. The second active assignment fills
+the locker; ending either assignment frees a student place. One-student types
+allow only one active assignment. Assignment capacity and active repair guards
+are enforced by the API, and changing a type below its current assignment count
+returns **409**. The API accepts the same optional campus columns on locker CSV
+imports (`block`, `floor`, `locker_type`); if provided, all three must be filled
+for every imported locker.
+
 Imports accept the CSV file as the **raw request body** with
 `Content-Type: text/csv`, rather than multipart form data or JSON. Use UTF-8
 (optional BOM), comma separators, and a header row. Column order may vary;
@@ -133,9 +158,9 @@ SYN-002,"Example, Student"
 Lockers (`locker_number` required; `location` optional):
 
 ```csv
-locker_number,location
-SYN-A1,Floor 1
-SYN-A2,
+locker_number,location,block,floor,locker_type
+SYN-A1,East corridor,C1,1,small_single_key
+SYN-A2,West corridor,C2,2,medium_shared_pin
 ```
 
 ```sh
@@ -225,9 +250,12 @@ concurrent transactions.
 Startup does not create or change tables. `alembic upgrade head` is mandatory.
 `0001` represents the original registry schema; `0002` adds users, sessions, repairs;
 `0003` adds notifications and audit events. `0004` adds nullable before/after
-snapshots to existing audit events; it preserves registry records, assignment
-history, and existing audit entries. Run `alembic upgrade head` before starting
-this version. Downgrading to `0003` removes snapshots but retains audit events.
+snapshots to existing audit events; `0005` adds locker campus/type fields and
+supports up to two active student assignments for shared locker types. Migrations
+preserve existing registry records and assignment history. Existing lockers keep
+null campus/type fields and retain one-student capacity until classified. Run
+`alembic upgrade head` before starting this version. Downgrading to `0003` removes
+the snapshots and campus/type fields and restores the one-active-assignment limit.
 
 For an existing database created by the original prototype, back it up, stop the
 old API, and verify it contains exactly the original three tables and indexes
