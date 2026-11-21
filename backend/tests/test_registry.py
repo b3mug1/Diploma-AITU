@@ -80,14 +80,145 @@ def test_edits_preserve_history_account_and_status(client, admin, db_factory):
         assert db.scalar(select(func.count()).select_from(Assignment)) == 2
     logs = audits(client, admin)
     assert len(logs) == 4
-    assert logs[0]["before"] == {"locker_number": "A1", "location": "Old", "status": "occupied"}
-    assert logs[0]["after"] == {"locker_number": "B2", "location": None, "status": "occupied"}
+    assert logs[0]["before"] == {
+        "locker_number": "A1",
+        "location": "Old",
+        "block": None,
+        "floor": None,
+        "locker_type": None,
+        "status": "occupied",
+    }
+    assert logs[0]["after"] == {
+        "locker_number": "B2",
+        "location": None,
+        "block": None,
+        "floor": None,
+        "locker_type": None,
+        "status": "occupied",
+    }
     assert logs[1]["before"] == {"student_code": "S1", "full_name": "Original"}
     assert logs[1]["after"] == {"student_code": "S2", "full_name": "Renamed"}
     assert all(log["actor_id"] == 1 and log["occurred_at"] for log in logs)
     # Identical edits do not create fictitious changes.
     client.patch(f"{API}/students/{student['id']}", headers=admin, json={"full_name": "Renamed"})
     assert len(audits(client, admin)) == 4
+
+
+@pytest.mark.parametrize("locker_type", ["medium_shared_key", "medium_shared_pin"])
+def test_locker_location_type_and_shared_capacity(client, admin, locker_type):
+    students = [
+        post(
+            client,
+            admin,
+            "students",
+            {"student_code": f"SHARED-{number}", "full_name": f"Student {number}"},
+        )
+        for number in range(1, 4)
+    ]
+    locker = post(
+        client,
+        admin,
+        "lockers",
+        {
+            "locker_number": "C2-2-M1",
+            "block": "C2",
+            "floor": 2,
+            "locker_type": locker_type,
+        },
+    )
+    assert locker["block"] == "C2"
+    assert locker["floor"] == 2
+    assert locker["locker_type"] == locker_type
+    for student in students[:2]:
+        response = client.post(
+            API + "/assignments",
+            headers=admin,
+            json={"student_id": student["id"], "locker_id": locker["id"]},
+        )
+        assert response.status_code == 201, response.text
+
+    locker = client.get(f"{API}/lockers/{locker['id']}", headers=admin).json()
+    assert locker["status"] == "occupied"
+    full = client.post(
+        API + "/assignments",
+        headers=admin,
+        json={"student_id": students[2]["id"], "locker_id": locker["id"]},
+    )
+    assert full.status_code == 409
+
+    assignment_id = client.get(API + "/assignments", headers=admin).json()[0]["id"]
+    ended = client.post(f"{API}/assignments/{assignment_id}/end", headers=admin)
+    assert ended.status_code == 200
+    assert client.get(f"{API}/lockers/{locker['id']}", headers=admin).json()["status"] == "available"
+    assert client.post(
+        API + "/assignments",
+        headers=admin,
+        json={"student_id": students[2]["id"], "locker_id": locker["id"]},
+    ).status_code == 201
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"locker_number": "INCOMPLETE-CAMPUS", "block": "C1"},
+        {"locker_number": "INVALID-BLOCK", "block": "C4", "floor": 1, "locker_type": "small_single_key"},
+        {"locker_number": "INVALID-FLOOR", "block": "C1", "floor": 4, "locker_type": "small_single_key"},
+        {"locker_number": "INVALID-TYPE", "block": "C1", "floor": 1, "locker_type": "unknown"},
+    ],
+)
+def test_invalid_locker_location_or_type(client, admin, payload):
+    assert client.post(API + "/lockers", headers=admin, json=payload).status_code == 422
+
+
+def test_locker_location_updates_are_atomic(client, admin):
+    locker = post(
+        client,
+        admin,
+        "lockers",
+        {"locker_number": "LOCATION-UPDATE"},
+    )
+    partial = client.patch(
+        f"{API}/lockers/{locker['id']}", headers=admin, json={"block": "C3"}
+    )
+    assert partial.status_code == 422
+    updated = client.patch(
+        f"{API}/lockers/{locker['id']}",
+        headers=admin,
+        json={"block": "C3", "floor": 3, "locker_type": "large_single_pin"},
+    )
+    assert updated.status_code == 200
+    assert (updated.json()["block"], updated.json()["floor"], updated.json()["locker_type"]) == (
+        "C3",
+        3,
+        "large_single_pin",
+    )
+    cleared = client.patch(
+        f"{API}/lockers/{locker['id']}",
+        headers=admin,
+        json={"block": None, "floor": None, "locker_type": None},
+    )
+    assert cleared.status_code == 200
+    assert (cleared.json()["block"], cleared.json()["floor"], cleared.json()["locker_type"]) == (
+        None,
+        None,
+        None,
+    )
+
+
+def test_locker_csv_import_accepts_campus_fields(client, admin):
+    response = upload(
+        client,
+        admin,
+        "lockers",
+        "locker_number,block,floor,locker_type\nC1-1-S1,C1,1,small_single_key\n",
+    )
+    assert response.status_code == 201, response.text
+    locker = client.get(API + "/lockers", headers=admin).json()[0]
+    assert (locker["block"], locker["floor"], locker["locker_type"]) == (
+        "C1",
+        1,
+        "small_single_key",
+    )
 
 
 @pytest.mark.parametrize("role", [None, "student", "technician"])
